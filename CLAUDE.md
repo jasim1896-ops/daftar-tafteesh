@@ -58,6 +58,9 @@ Tabs: اليوم · السجل · التصدير · المساعد · الإعد
 
 Build: `python3 build.py` (after `python3 excel/make_xlsx.py --clean` if the template changed). Commit `index.html`. GitHub Pages serves the repo root of `main`.
 
+## Field test log
+- 2026-10-29, GitHub Pages version installed on his iPhone home screen: GPS fills automatically ✓, the «إملاء صوتي» button works ✓. Bug: iOS delivers dictation in chunks that were glued without spaces; fixed by joining the results with spaces. He said more adjustments are needed; ask him what they are.
+
 ## Lessons learned (do not repeat)
 - iOS Siri Shortcuts were too hard for him to build by hand; I cannot send a signed shortcut from Windows.
 - A Claude Project + voice mode «مساعد القيادة» did not fit: he must tap the mic each time and it is not integrated with the app.

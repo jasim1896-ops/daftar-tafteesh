@@ -570,7 +570,7 @@ function dictate(oid,btn){
   const ta=document.querySelector(`textarea[data-oid="${oid}"]`);const base=ta.value.trim();
   try{rec=new SR()}catch(e){S.speechBlocked=true;render(true);return}
   rec.lang="ar-AE";rec.interimResults=true;rec.continuous=true;
-  rec.onresult=e=>{let s="";for(let i=0;i<e.results.length;i++)s+=e.results[i][0].transcript;ta.value=(base?base+" ":"")+s.trim();ta.dispatchEvent(new Event("input",{bubbles:true}))};
+  rec.onresult=e=>{const parts=[];for(let i=0;i<e.results.length;i++)parts.push(e.results[i][0].transcript.trim());const s=parts.filter(Boolean).join(" ").replace(/\s+/g," ");ta.value=(base?base+" ":"")+s;ta.dispatchEvent(new Event("input",{bubbles:true}))};
   rec.onerror=e=>{if(["not-allowed","service-not-allowed","audio-capture"].includes(e.error)){S.speechBlocked=true;toast("المايك غير متاح هنا — استخدم مايك لوحة المفاتيح");render(true)}};
   rec.onend=()=>{rec=null;document.querySelectorAll(".mic.rec").forEach(b=>{b.classList.remove("rec");b.innerHTML=IC.mic+"إملاء صوتي"})};
   try{rec.start();btn.classList.add("rec");btn.innerHTML=IC.mic+"إيقاف الإملاء"}catch(e){rec=null;S.speechBlocked=true;render(true)}
