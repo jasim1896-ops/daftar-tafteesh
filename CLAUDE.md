@@ -66,21 +66,17 @@ Build: `python3 build.py` (after `python3 excel/make_xlsx.py --clean` if the tem
 - A Claude Project + voice mode «مساعد القيادة» did not fit: he must tap the mic each time and it is not integrated with the app.
 - Local-only storage inside the Claude iOS app lost his data. Never rely on it there.
 
-## NEXT TASK: «المساعد الآلي», a voice-driven visit flow in the standalone app
-
-The user's own description: one button on the home screen. He taps it once, and the app **talks** (speechSynthesis, Arabic) and **listens** (webkitSpeechRecognition, `ar-AE`) in a loop, filling the visit as they go:
-1. Open a new visit (date and time automatic).
-2. «وين المنطقة؟», then «وش الموقع؟», matched against the areas and sites lists (fuzzy, Gulf pronunciation), confirmed back by voice.
-3. Take GPS coordinates automatically.
-4. «في مشاهدات؟»
-   - **Yes:** ask for the type and description, then «تم تحرير مخالفة ولا مشاهدة بس؟». Open the in-app camera (getUserMedia live preview, so a spoken «صوّر» or one tap captures). Ask «في مشاهدة ثانية؟».
-   - **No / «لا توجد»:** record «لا توجد مشاهدات».
-5. «ننهي الزيارة؟», then stamp departure time, save, and speak a short summary.
-
-Requirements: hands-free, short prompts, read back what was understood, allow «عيد» (repeat), «رجوع» (back) and «إلغاء» (cancel). Must be safe to use while driving (no reading the screen). Large «إيقاف» button. A deterministic state machine plus keyword/fuzzy matching is fine for v1 (no AI available on Pages). The optional Claude API key for free-form understanding is discussed but **not** approved or paid yet. Keep the same data model and Excel export, so both deployments stay compatible.
-
-Paid options discussed, **none bought yet**: Claude API (only if free speech understanding is needed), Apple Developer Program (later, after management approval; needs a Mac), GitHub Pro (not needed).
+## «المساعد الآلي» — voice-driven visit (built 2026-10-29, waiting for his field test)
+Dark button «المساعد الآلي — زيارة بالصوت» on the اليوم tab (shown only where SpeechRecognition + speechSynthesis exist and **not** inside the claude.ai artifact). Code: section `المساعد الآلي` in `src/app.html` (functions `va*`, overlay `#va`).
+- Deterministic state machine: `area → site → hasObs → type → desc → action → photo → more → finish`, plus transient steps `pick` («تقصد X؟» for 0.6–0.8 matches), `newSite` (unknown site → «أضيفه موقع جديد؟», saved to settings), `cancel`.
+- Shortcuts: saying a site name at the area step («حبشان الشرقية», «ليوا الثروانية») fills both; naming a type at «في مشاهدات؟» skips the yes. Areas with one site fill the site automatically.
+- Matching: `arNorm` (hamza/ta-marbuta/alef-maqsura/diacritics), `arPhon` (Gulf: ج→ي, ق→ك, ذ→ز, ث→س, ظ→ض), filler words and «ال» stripped, Levenshtein over word windows (partial-phrase matches ×0.9). Types also by keyword (`VA_TYPE_KW`) or spoken number. After 2 misses it reads the options.
+- Commands anytime (≤3 words): «عيد», «رجوع», «إلغاء» (confirm, deletes the visit), «وقف». «إيقاف» button keeps what was recorded and opens the visit editor (an empty visit is deleted).
+- Each answer is read back. Two silences → pauses with a big green «تكلّم» button (also the fallback if iOS refuses to start the mic outside a tap). Camera: `getUserMedia` live preview; «صوّر» or tapping the preview captures; photos go through the same `storePhoto` (1920 px + stamp). GPS taken at start. Departure stamped on «نعم» at «ننهي الزيارة؟», then a spoken summary. Screen wake lock while running.
+- Visits get `src:"voice"` (shows the «صوتي» pill). Same data model, Excel export unchanged.
+- **Unverified on a real iPhone:** whether iOS lets the mic restart after speech without a tap, and whether speech recognition works while the camera is open. Fallbacks exist (tap «تكلّم», tap the preview, «خلاص، كمّل»). Ask him how it behaved.
 
 ## Testing
+- Voice flow: Playwright with a mocked `webkitSpeechRecognition` (scripted answers queue) and `speechSynthesis`, Chromium flags `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; route the cdnjs JSZip URL to a local copy (cdnjs is blocked in the cloud sandbox).
 - `node --check` on the extracted `<script>`, then a Playwright run (Chromium) through a visit, photo, export, and reload.
 - Recalculate exported workbooks with LibreOffice and confirm values on the weekly report.
