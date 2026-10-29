@@ -181,6 +181,36 @@ ol.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;g
 .siri-help pre{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;white-space:pre-wrap;font-family:inherit;font-size:.85rem;margin:0}
 .siri-help ol{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px}
 .pill.siri{background:var(--ok-soft);color:var(--ok)}
+/* المساعد الآلي — full-screen, dark, huge targets: glanceable while driving */
+.va{position:fixed;inset:0;z-index:60;background:#0B1310;color:#F2F6F3;display:flex;flex-direction:column;gap:14px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.va-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.va-state{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:1.05rem;color:#9FB3A9}
+.va-state::before{content:"";width:14px;height:14px;border-radius:50%;background:#4A5A52}
+.va[data-mode="listen"] .va-state{color:#3DDC97}.va[data-mode="listen"] .va-state::before{background:#3DDC97;animation:vaPulse 1s ease-in-out infinite}
+.va[data-mode="speak"] .va-state{color:#7CC4F0}.va[data-mode="speak"] .va-state::before{background:#7CC4F0}
+.va[data-mode="wait"] .va-state{color:#E2A94A}.va[data-mode="wait"] .va-state::before{background:#E2A94A}
+@keyframes vaPulse{50%{transform:scale(1.5);opacity:.5}}
+.va-ctx{font-size:.85rem;color:#9FB3A9;text-align:left}
+.va-say{font-family:var(--f-display);font-size:clamp(1.6rem,7vw,2.4rem);font-weight:700;line-height:1.35;text-wrap:balance;overflow-wrap:anywhere}
+.va-heard{font-size:1.05rem;color:#C9D6CF;min-height:1.6em;overflow-wrap:anywhere}
+.va-cam{position:relative;border-radius:16px;overflow:hidden;background:#000;flex:1 1 220px;min-height:200px;max-height:48vh}
+.va-cam video{width:100%;height:100%;object-fit:cover;display:block}
+.va-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.va-flash.on{animation:vaFlash .35s ease-out}
+@keyframes vaFlash{from{opacity:.85}to{opacity:0}}
+.va-shots{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);border-radius:999px;padding:2px 10px;font-weight:700}
+.va-shoot{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;border:6px solid #fff;background:rgba(255,255,255,.35)}
+.va-quick{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto}
+.va-q{flex:1 1 130px;min-height:58px;border-radius:14px;border:1.5px solid #2E3E36;background:#16211C;color:#F2F6F3;font-size:1.05rem;font-weight:600;padding:8px 12px}
+.va-q.y{background:#0E6A4E;border-color:#0E6A4E}.va-q.v{background:#BE3326;border-color:#BE3326}.va-q.o{background:#A86F12;border-color:#A86F12}
+.va-talk{min-height:110px;border-radius:20px;border:0;background:#1F9D6B;color:#fff;font-size:1.6rem;font-weight:700}
+.va-nav{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.va-nav button{min-height:58px;border-radius:14px;border:1.5px solid #2E3E36;background:transparent;color:#F2F6F3;font-size:1.1rem;font-weight:600}
+.va-stop{min-height:84px;border-radius:20px;border:0;background:#D63A2B;color:#fff;font-size:1.7rem;font-weight:700;flex:none}
+.btn.va-go{background:#13231C;border-color:#13231C;color:#fff;font-weight:700}
+:root[data-theme="dark"] .btn.va-go{background:#3DBB8E;border-color:#3DBB8E;color:#06140E}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.va-go{background:#3DBB8E;border-color:#3DBB8E;color:#06140E}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){.stats{gap:6px}.stat b{font-size:1.4rem}.grid2{grid-template-columns:1fr}}
 </style>
@@ -196,6 +226,16 @@ ol.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;g
     <button class="tab" data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
   </div></nav>
   <div id="footer"></div>
+  <section id="va" class="va" hidden aria-label="المساعد الآلي" aria-live="polite">
+    <div class="va-top"><span class="va-state" id="vaState"></span><span class="va-ctx" id="vaCtx"></span></div>
+    <div class="va-say" id="vaSay"></div>
+    <div class="va-heard" id="vaHeard"></div>
+    <div class="va-cam" id="vaCamBox" hidden><video id="vaCam" playsinline muted autoplay data-va="shoot"></video><div class="va-flash" id="vaFlash"></div><span class="va-shots" id="vaShots"></span><button class="va-shoot" data-va="shoot" aria-label="صوّر"></button></div>
+    <div class="va-quick" id="vaQuick"></div>
+    <button class="va-talk" id="vaTalk" data-va="talk" hidden>تكلّم</button>
+    <div class="va-nav"><button data-va="repeat">عيد</button><button data-va="back">رجوع</button></div>
+    <button class="va-stop" data-va="stop">إيقاف</button>
+  </section>
   <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
   <input type="file" id="galIn" accept="image/*" multiple hidden>
   <input type="file" id="siriIn" accept=".txt,text/plain" hidden>
@@ -343,7 +383,7 @@ function renderTabs(){
 }
 
 /* ---------------- shared bits ---------------- */
-function visitTags(v){const s=stats([v]);const t=[];if(v.src==="siri")t.push('<span class="pill siri">صوتي</span>');
+function visitTags(v){const s=stats([v]);const t=[];if(v.src==="siri"||v.src==="voice")t.push('<span class="pill siri">صوتي</span>');
   if(v.status==="open")t.push('<span class="pill live">جارية</span>');
   if(s.viol)t.push(`<span class="pill viol">مخالفة${s.viol>1?" ×"+s.viol:""}</span>`);
   else if(s.only)t.push(`<span class="pill obs">مشاهدة${s.only>1?" ×"+s.only:""}</span>`);
@@ -367,6 +407,7 @@ function vToday(){
   <section class="day"><div class="day-date">${esc(longDate(d))}</div>
     <div class="sched">${sch?`<span class="pill acc">جدول اليوم</span><span>${esc(sch.t)}</span>`:'<span class="pill ok">عطلة نهاية الأسبوع</span>'}</div></section>
   ${open.map(v=>`<div class="live-card"><div><b>زيارة جارية: ${esc(v.area)} · ${esc(v.site||"بدون موقع")}</b><span class="small muted">منذ ${esc(v.arrival||"")} — ${esc(shortDate(v.date))}</span></div><button class="btn primary" data-act="edit" data-id="${v.id}">متابعة</button></div>`).join("")}
+  ${vaSupported()&&!S.speechBlocked?`<button class="btn big va-go" data-act="va">${IC.mic}المساعد الآلي — زيارة بالصوت</button>`:""}
   <button class="btn primary big" data-act="new">${IC.plus}بدء زيارة جديدة</button>
   ${S.aiBusy==="siri"?'<div class="card"><span class="spin"></span> جاري قراءة مشاهدات مساعد القيادة…</div>':S.importOpen?`<div class="card stack"><h3>استيراد من مساعد القيادة</h3>
     <div class="small">في محادثة مساعد القيادة اضغط مطولًا على آخر رد (التصدير) ← نسخ، ثم الصقه هنا.</div>
@@ -556,14 +597,19 @@ async function addPhotos(files){
   toast("جاري حفظ الصور…");
   for(const file of files){
     try{const taken=file.lastModified&&Math.abs(Date.now()-file.lastModified)<1000*60*60*24*400?new Date(file.lastModified):new Date();
-      const blob=await stampPhoto(file,v,taken);let id=null;
-      if(Cloud.assets){try{const r=await Cloud.assets.upload(blob,{type:"image/jpeg"});id="a:"+r.id+":"+taken.getTime();urls.set(id,r.url)}catch(e){id=null}}
-      if(!id){const key=uid();await DB.put("photos",{id:key,blob,visitId:v.id,obsId:o.id,takenAt:taken.getTime()});id="l:"+key+":"+taken.getTime();S.pendingPhotos++}
-      o.photos.push(id);
+      await storePhoto(v,o,file,taken);
     }catch(e){toast("تعذر قراءة إحدى الصور")}
   }
   await saveVisit(v,true);render(true);toast(files.length>1?"تم حفظ "+files.length+" صور":"تم حفظ الصورة");
 }
+async function storePhoto(v,o,src,taken){
+  const blob=await stampPhoto(src,v,taken);let id=null;
+  if(Cloud.assets){try{const r=await Cloud.assets.upload(blob,{type:"image/jpeg"});id="a:"+r.id+":"+taken.getTime();urls.set(id,r.url)}catch(e){id=null}}
+  if(!id){const key=uid();await DB.put("photos",{id:key,blob,visitId:v.id,obsId:o.id,takenAt:taken.getTime()});id="l:"+key+":"+taken.getTime();S.pendingPhotos++}
+  o.photos.push(id)}
+async function removeVisit(v){
+  for(const o of v.obs)for(const p of o.photos)await delPhoto(p);
+  await DB.del("visits",v.id).catch(()=>{});if(Cloud.ok){try{await Cloud.col.doc(v.id).delete()}catch(e){}}S.dirty.delete(v.id);S.visits=S.visits.filter(x=>x.id!==v.id)}
 function loadImage(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>{res(im);setTimeout(()=>URL.revokeObjectURL(u),1000)};im.onerror=()=>{URL.revokeObjectURL(u);rej()};im.src=u})}
 async function stampPhoto(file,v,taken){
   const im=await loadImage(file);const max=1920;let w=im.naturalWidth,h=im.naturalHeight;const sc=Math.min(1,max/Math.max(w,h));w=Math.round(w*sc);h=Math.round(h*sc);
@@ -873,6 +919,286 @@ function vAssist(){
   <details class="area" ${S.driveOpen?"open":""}><summary><span>مساعد القيادة الصوتي</span></summary>${driveHelp()}</details>`;
 }
 
+/* ---------------- المساعد الآلي: hands-free visit by voice (state machine + fuzzy matching) ---------------- */
+const SRec=()=>window.SpeechRecognition||window.webkitSpeechRecognition;
+const vaSupported=()=>!!(SRec()&&window.speechSynthesis&&!(window.claude&&window.claude.use));
+const arNorm=s=>normDigits(s).toLowerCase().replace(/[ً-ٰٟـ]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ا").replace(/ة/g,"ه").replace(/ؤ/g,"و").replace(/ئ/g,"ي")
+  .replace(/[^؀-ۿa-z0-9\s]/g," ").replace(/[،؟؛]/g," ").replace(/\s+/g," ").trim();
+/* Gulf pronunciation: ج is often said ي, ق as g; collapse letters the recogniser mixes up */
+const arPhon=w=>w.replace(/ق/g,"ك").replace(/ج/g,"ي").replace(/ذ/g,"ز").replace(/ث/g,"س").replace(/ظ/g,"ض");
+const AR_FILL=new Set(["في","الى","على","عند","من","منطقة","المنطقة","موقع","الموقع","محضر","المحضر","انا","احنا","رايح","رحت","وصلت","هو","هي","يعني","والله","طيب","اسم","نوع","المشاهدة"].map(w=>arPhon(arNorm(w))));
+const arKey=s=>arPhon(arNorm(s)).split(" ").filter(w=>w&&!AR_FILL.has(w)).map(w=>w.length>3&&w.startsWith("ال")?w.slice(2):w).join(" ");
+function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+const simil=(a,b)=>1-lev(a,b)/Math.max(a.length,b.length,1);
+function fuzzy(utt,cand){const u=arKey(utt),c=arKey(cand);if(!u||!c)return 0;
+  if((" "+u+" ").includes(" "+c+" "))return 1;
+  const cj=c.replace(/ /g,""),uw=u.split(" "),n=c.split(" ").length;let best=simil(u.replace(/ /g,""),cj);
+  // a near-match on part of a longer phrase is less certain («مزرعه بن سالم» ≠ «مزيرعة»)
+  for(let k=Math.max(1,n-1);k<=n+1;k++)for(let i=0;i+k<=uw.length;i++)best=Math.max(best,simil(uw.slice(i,i+k).join(""),cj)*(uw.length>k?.9:1));
+  return best}
+/* best candidate over all recognition alternatives; ties go to the longer name («المارية الغربية» over «المارية») */
+function bestMatch(alts,cands,extra){let value=null,score=0,second=0;
+  for(const cand of cands){let s=0;for(const a of alts){s=Math.max(s,fuzzy(a,cand));for(const x of (extra?extra(cand):[]))s=Math.max(s,fuzzy(a,x))}
+    if(s>score||(s===score&&s>0&&value&&cand.length>value.length)){if(s>score)second=score;score=s;value=cand}else if(s>second)second=s}
+  return{value,score,sure:score===1||(score>=.8&&score-second>=.08),maybe:score>=.6}}
+const AR_NUM={"واحد":1,"وحده":1,"اول":1,"اثنين":2,"ثنين":2,"اثنان":2,"ثلاث":3,"ثلاثه":3,"اربع":4,"اربعه":4,"خمس":5,"خمسه":5,"ست":6,"سته":6,"سبع":7,"سبعه":7,"ثمان":8,"ثمانيه":8,"تسع":9,"تسعه":9,"عشر":10,"عشره":10};
+function spokenNum(n){for(const w of n.split(" ")){if(/^\d{1,2}$/.test(w))return +w;if(AR_NUM[w])return AR_NUM[w];if(w.startsWith("ال")&&AR_NUM[w.slice(2)])return AR_NUM[w.slice(2)]}return 0}
+function yesNo(n){
+  if(/(^| )(لا|لاء|كلا|ابد|ابدا|مافي|ماكو|مب|مو|نو|no)( |$)|ما في|ما فيه|ما شي|ولا شي|لا يوجد|لا توجد|ما شفت|بلا مشاهد|بدون|سليم|نظيف/.test(n))return "no";
+  if(/(^| )(نعم|ايه|اي|ايوه|ايوا|اكيد|صح|صحيح|تمام|اوكي|اوك|هيه|يب|يس|طبعا|زين|موجود|فيه|في|ok|okay|yes)( |$)/.test(n))return "yes";
+  return null}
+function vaCommand(n){if(n.split(" ").length>3)return null;
+  if(/^(عيد|اعيد|اعد|كرر|ايش|شنو|وشو|مره ثانيه|عيد السوال)$/.test(n)||/(^| )(عيد|كرر)( |$)/.test(n))return "repeat";
+  if(/(^| )(رجوع|ارجع|رجع|السابق)( |$)/.test(n))return "back";
+  if(/(^| )(الغاء|الغ|الغي|كنسل)( |$)/.test(n))return "cancel";
+  if(/(^| )(وقف|ايقاف|اوقف|ستوب|stop)( |$)/.test(n))return "stop";
+  return null}
+const VA_TYPE_KW=[[/حرق|يحرق|دخان|نار|محروق/,"حرق مخلفات"],[/صهريج|صهاريج|تانكر|تناكر|جوفيه|تعبيه|تحميل/,"تحميل مياه جوفية في صهاريج"],[/صرف|مجاري|(^| )كب|تصريف/,"تصريف / كب صرف صحي"],
+  [/زيت|زيوت|تسرب|كيمي|ديزل|بترول/,"تسرب زيوت أو مواد كيميائية"],[/بير|ابار|بيار|حفر/,"حفر آبار غير مصرح"],[/نفايات|قمامه|زباله|مخلفات|قراطيس|اكياس/,"رمي نفايات عامة"]];
+const VA_TRANSIENT=new Set(["pick","newSite","cancel"]);
+const VA_Q={area:"وين المنطقة؟",site:"وش الموقع؟",hasObs:"في مشاهدات؟",type:"وش نوع المشاهدة؟",desc:"صِف المشاهدة.",action:"تم تحرير مخالفة، ولا مشاهدة بس؟",more:"في مشاهدة ثانية؟",finish:"ننهي الزيارة؟",cancel:"أكيد تلغي الزيارة؟"};
+const VA={on:false,gen:0,step:"",hist:[],vid:null,oid:null,fresh:null,miss:0,silent:0,heard:"",say:"",mode:"",rec:null,stream:null,lock:null,tmp:null,shots:0,viaTap:false,rej:new Set()};
+
+function vaVoice(){const vs=(window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang));
+  return vs.find(x=>/AE/i.test(x.lang))||vs.find(x=>/SA/i.test(x.lang))||vs[0]||null}
+function speak(t){return new Promise(res=>{const ss=window.speechSynthesis;if(!ss||!t)return res();
+  try{ss.cancel()}catch(e){}
+  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();if(vo){u.voice=vo;u.lang=vo.lang}else u.lang="ar-SA";u.rate=1;
+  let done=false;const tm=setTimeout(()=>end(),2500+t.length*120);function end(){if(done)return;done=true;clearTimeout(tm);res()}
+  u.onend=end;u.onerror=end;try{ss.speak(u)}catch(e){end()}})}
+/* one utterance; resolves {alts:[...]} or {silent:true} or {err} */
+function listen(ms,pause){return new Promise(res=>{const SR=SRec();let r;try{r=new SR()}catch(e){return res({err:"start"})}
+  r.lang="ar-AE";r.interimResults=true;r.continuous=true;r.maxAlternatives=3;
+  let done=false,silT=null,alts=[];
+  const finish=out=>{if(done)return;done=true;clearTimeout(silT);clearTimeout(maxT);VA.rec=null;try{r.abort()}catch(e){}res(out||(alts[0]?{alts}:{silent:true}))};
+  r.onresult=e=>{const parts=[];for(let i=0;i<e.results.length;i++)parts.push(e.results[i][0].transcript.trim());
+    const text=parts.filter(Boolean).join(" ").replace(/\s+/g," ").trim();if(!text)return;
+    const last=e.results[e.results.length-1],extra=[];
+    if(e.results.length===1)for(let j=1;j<last.length;j++)if(last[j].transcript.trim())extra.push(last[j].transcript.trim());
+    alts=[text,...extra];VA.heard=text;vaRender();clearTimeout(silT);silT=setTimeout(()=>finish(),pause)};
+  r.onerror=e=>{if(["not-allowed","service-not-allowed","audio-capture","network"].includes(e.error))finish({err:e.error});else finish()};
+  r.onend=()=>finish();
+  const maxT=setTimeout(()=>finish(),ms);
+  VA.rec=r;try{r.start()}catch(e){finish({err:"start"})}})}
+
+function vaVisit(){return visit(VA.vid)}
+function vaObs(){const v=vaVisit();return v&&v.obs.find(o=>o.id===VA.oid)}
+function vaPrompt(){const v=vaVisit();
+  if(VA.step==="photo")return VA.shots?"قل صوّر لصورة ثانية، أو خلاص.":"الكاميرا جاهزة. قل صوّر، أو خلاص.";
+  if(VA.step==="pick")return "تقصد "+VA.tmp.label+"؟";
+  if(VA.step==="newSite")return "ما لقيت «"+VA.tmp.name+"» في مواقع "+(v&&v.area||"")+". أضيفه موقع جديد؟";
+  return VA_Q[VA.step]||""}
+function vaHelp(){const st=S.settings,v=vaVisit();
+  if(VA.step==="area")return "المناطق: "+Object.keys(st.areas).join("، ")+".";
+  if(VA.step==="type")return "قل الرقم: "+st.types.filter(t=>t!==NO_OBS).map((t,i)=>(i+1)+" "+t).join("، ")+".";
+  if(VA.step==="site"&&v&&(st.areas[v.area]||[]).length<=8)return "المواقع: "+st.areas[v.area].join("، ")+".";
+  if(["hasObs","more","finish","pick","newSite","cancel"].includes(VA.step))return "قل نعم أو لا.";
+  if(VA.step==="action")return "قل مخالفة، أو مشاهدة بس.";
+  return ""}
+
+async function vaStart(){
+  if(VA.on)return;
+  const now=new Date(),d=today();
+  const v={id:uid(),date:d,area:"",site:"",arrival:hhmm(now),departure:"",lat:"",lng:"",acc:"",obs:[],notes:"",status:"open",src:"voice",createdAt:Date.now(),updatedAt:Date.now()};
+  S.visits.push(v);saveVisit(v,true);
+  Object.assign(VA,{on:true,vid:v.id,oid:null,fresh:null,hist:[],step:"",heard:"",tmp:null,shots:0,viaTap:false,rej:new Set()});
+  $("#va").hidden=false;document.documentElement.style.overflow="hidden";
+  vaGo("area","بدأت زيارة الساعة "+v.arrival+".");   // speaks inside the tap, which unlocks speech on iOS
+  locate(v,true);
+  try{if(navigator.wakeLock)VA.lock=await navigator.wakeLock.request("screen")}catch(e){VA.lock=null}
+}
+function vaGo(step,say,back){
+  if(!VA.on)return;
+  if(VA.step==="photo"&&step!=="photo")vaCamOff();
+  if(!back&&VA.step&&!VA_TRANSIENT.has(VA.step)&&VA.step!==step)VA.hist.push(VA.step);
+  if(step==="more"||step==="finish")VA.fresh=null;
+  VA.step=step;VA.miss=0;VA.silent=0;
+  if(step==="photo"){const g=++VA.gen;VA.mode="busy";vaRender();
+    vaCamOn().then(ok=>{if(g!==VA.gen)return;if(ok)vaAsk(say);else vaGo("more",(say?say+" ":"")+"الكاميرا مو متاحة، أضف الصور بعدين من الشاشة.")});return}
+  vaAsk(say)}
+async function vaAsk(pre){
+  if(!VA.on)return;const g=++VA.gen;VA.viaTap=false;
+  VA.say=((pre?pre+" ":"")+vaPrompt()).trim();VA.mode="speak";vaRender();
+  await speak(VA.say);if(g!==VA.gen||!VA.on)return;
+  vaListen(g)}
+async function vaListen(g){
+  VA.mode="listen";VA.heard="";vaRender();
+  try{window.speechSynthesis.cancel()}catch(e){}
+  const r=await listen(VA.step==="desc"?25000:9000,VA.step==="desc"?2200:1300);
+  if(g!==VA.gen||!VA.on)return;
+  if(r.err){
+    if(r.err==="network")return vaWait("التعرف على الصوت يحتاج إنترنت. اضغط «تكلّم» لما ترجع التغطية.");
+    if(!VA.viaTap)return vaWait("اضغط الزر الأخضر «تكلّم» عشان أسمعك.");
+    S.speechBlocked=true;await speak("المايك مو متاح. كمّل من الشاشة.");return vaStop()}
+  if(r.silent){VA.silent++;if(VA.silent>=2)return vaWait("ما سمعتك. اضغط «تكلّم» لما تجهز.");return vaAsk()}
+  VA.silent=0;vaHandle(r.alts)}
+function vaWait(msg){const g=++VA.gen;VA.mode="wait";VA.say=msg;vaRender();speak(msg).then(()=>{if(g===VA.gen)vaRender()})}
+function vaMiss(msg){VA.miss++;const h=VA.miss>=2?vaHelp():"";vaAsk(((msg||"ما فهمت.")+" "+h).trim())}
+function vaNewObs(type){const v=vaVisit();v.obs=v.obs.filter(o=>o.type!==NO_OBS);
+  const o={id:uid(),type:type||"",desc:"",action:A_OBS,photos:[]};v.obs.push(o);VA.oid=o.id;VA.fresh=o.id;VA.shots=0;saveVisit(v);return o}
+function vaSetArea(v,a){v.area=a;if(!(S.settings.areas[a]||[]).includes(v.site))v.site="";
+  const l=S.settings.areas[a]||[];if(l.length===1)v.site=l[0];saveVisit(v)}
+function vaMatchType(alts){
+  const types=S.settings.types.filter(t=>t!==NO_OBS);const m=bestMatch(alts,types);
+  if(m.sure)return m.value;
+  const n=arNorm(alts.join(" "));for(const[r,t]of VA_TYPE_KW)if(r.test(n)&&types.includes(t))return t;
+  const k=spokenNum(arNorm(alts[0]));if(k&&types[k-1])return types[k-1];
+  return null}
+function vaHandle(alts){
+  const v=vaVisit();if(!v)return vaStop();
+  const t=alts[0].trim(),n=arNorm(t);VA.heard=t;
+  const cmd=VA.step==="desc"&&n.split(" ").length>1?null:vaCommand(n);
+  if(cmd==="repeat")return vaAsk();
+  if(cmd==="back")return vaBack();
+  if(cmd==="stop")return vaStop();
+  if(cmd==="cancel"){if(VA.step!=="cancel")VA.tmp={ret:VA.step};return vaGo("cancel")}
+  const yn=yesNo(n),st=S.settings;
+  switch(VA.step){
+    case "area":{
+      const areas=Object.keys(st.areas),sites=[];for(const a of areas)for(const s of st.areas[a])if(!sites.some(x=>x.s===s))sites.push({a,s});
+      const am=bestMatch(alts,areas),sm=bestMatch(alts,sites.map(x=>x.s),s=>[s.replace(sites.find(x=>x.s===s).a,"").trim()].filter(Boolean));
+      if(sm.score===1&&sm.score>=am.score&&!areas.includes(sm.value)){const a=sites.find(x=>x.s===sm.value).a;vaSetArea(v,a);v.site=sm.value;saveVisit(v);return vaGo("hasObs",a+"، "+sm.value+".")}
+      const place=()=>v.site&&v.site!==v.area?v.area+"، "+v.site+".":v.area+".";
+      if(am.sure){vaSetArea(v,am.value);return vaGo(v.site?"hasObs":"site",place())}
+      if(am.maybe&&!VA.rej.has(am.value)){VA.tmp={label:am.value,ret:"area",apply:()=>{vaSetArea(v,am.value);return[v.site?"hasObs":"site",place()]}};return vaGo("pick")}
+      return vaMiss("ما عرفت المنطقة.")}
+    case "site":{
+      const list=st.areas[v.area]||[];const m=bestMatch(alts,list,s=>[s.replace(v.area,"").trim()].filter(Boolean));
+      if(m.sure){v.site=m.value;saveVisit(v);return vaGo("hasObs",m.value+".")}
+      if(m.maybe&&!VA.rej.has(m.value)){VA.tmp={label:m.value,ret:"site",apply:()=>{v.site=m.value;saveVisit(v);return["hasObs",m.value+"."]}};return vaGo("pick")}
+      const name=t.replace(/^(في |عند )?(ال)?(موقع|محضر)\s+/,"").trim();
+      if(yn||name.length<2)return vaMiss("ما عرفت الموقع.");
+      VA.tmp={name,ret:"site"};return vaGo("newSite")}
+    case "newSite":
+      if(yn==="yes"){const l=st.areas[v.area]||(st.areas[v.area]=[]);if(!l.includes(VA.tmp.name)){l.push(VA.tmp.name);saveSettings()}
+        v.site=VA.tmp.name;saveVisit(v);return vaGo("hasObs","أضفت "+v.site+".")}
+      if(yn==="no")return vaGo("site","قل اسم الموقع مرة ثانية.",true);
+      return vaMiss();
+    case "pick":
+      if(yn==="yes"){const[nx,say]=VA.tmp.apply();return vaGo(nx,say)}
+      if(yn==="no"){VA.rej.add(VA.tmp.label);return vaGo(VA.tmp.ret,"قلها مرة ثانية.",true)}
+      return vaMiss();
+    case "hasObs":case "more":{
+      if(yn==="no"){if(VA.step==="hasObs"){v.obs=[{id:uid(),type:NO_OBS,desc:"",action:A_NONE,photos:[]}];saveVisit(v);return vaGo("finish","لا توجد مشاهدات.")}
+        return vaGo("finish")}
+      const ty=vaMatchType(alts);
+      if(ty){vaNewObs(ty);return vaGo("desc",ty+".")}
+      if(yn==="yes"){vaNewObs();return vaGo("type")}
+      return vaMiss()}
+    case "type":{const ty=vaMatchType(alts);if(!ty)return vaMiss("ما عرفت النوع.");
+      const o=vaObs();if(o){o.type=ty;saveVisit(v)}return vaGo("desc",ty+".")}
+    case "desc":{if(t.length<2)return vaMiss();const o=vaObs();if(o){o.desc=t;saveVisit(v)}return vaGo("action","سجّلت: "+t+".")}
+    case "action":{const o=vaObs();let a=null;
+      if(/مخالف|حرر|تحرير/.test(n)&&!/(^| )(ما|لا|بدون|مافي|ما في)( |$)/.test(n))a=A_VIOL;
+      else if(/مشاهد|بس|فقط|بدون|ما في|مافي|لا/.test(n))a=A_OBS;
+      if(!a)return vaMiss();if(o){o.action=a;saveVisit(v)}
+      return vaGo("photo",a===A_VIOL?"تم تحرير مخالفة.":"مشاهدة فقط.")}
+    case "photo":
+      if(/(^| )(لا|ما|خلاص|خلصت|بس|تم|كمل|كفايه|تخطي|التالي|مافي|ما في|بعدين)( |$)/.test(n))return vaGo("more",VA.shots?VA.shots+" صور.":"بدون صور.");
+      if(/صور|التقط|كليك|شوت|صوره/.test(n))return vaShoot();
+      return vaMiss();
+    case "finish":
+      if(yn==="yes")return vaFinish();
+      if(yn==="no"){speak("تمام، الزيارة باقية مفتوحة. كمّلها من الشاشة.");return vaStop(true)}
+      return vaMiss();
+    case "cancel":
+      if(yn==="yes")return vaCancel();
+      if(yn==="no")return vaGo(VA.tmp&&VA.tmp.ret||"area","نكمل.",true);
+      return vaMiss();
+  }}
+function vaBack(){
+  if(VA_TRANSIENT.has(VA.step))return vaGo((VA.tmp&&VA.tmp.ret)||"area","",true);
+  const prev=VA.hist.pop();if(!prev)return vaAsk("هذي أول خطوة.");
+  const v=vaVisit();
+  if(prev==="hasObs"||prev==="more"){
+    if(VA.fresh){const o=v.obs.find(x=>x.id===VA.fresh);if(o&&!o.photos.length)v.obs=v.obs.filter(x=>x.id!==VA.fresh);VA.fresh=null}
+    if(prev==="hasObs")v.obs=v.obs.filter(x=>x.type!==NO_OBS);
+    const real=v.obs.filter(x=>x.type!==NO_OBS);VA.oid=real.length?real[real.length-1].id:null;saveVisit(v)}
+  if(prev==="photo"){const o=vaObs();VA.shots=o?o.photos.length:0}
+  vaGo(prev,"رجعنا.",true)}
+async function vaShoot(){const g=++VA.gen;VA.mode="busy";vaRender();
+  const ok=await vaCapture();if(g!==VA.gen||!VA.on)return;
+  vaAsk(ok?"تم، صورة "+VA.shots+".":"ما قدرت أصوّر.")}
+async function vaCamOn(){
+  if(VA.stream)return true;
+  try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
+    VA.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440}},audio:false});
+    if(!VA.on){vaCamOff();return false}
+    const vd=$("#vaCam");vd.srcObject=VA.stream;vd.hidden=false;await vd.play().catch(()=>{});
+    for(let i=0;i<30&&!vd.videoWidth;i++)await new Promise(r=>setTimeout(r,100));
+    vaRender();return true}catch(e){vaCamOff();return false}}
+function vaCamOff(){if(VA.stream){VA.stream.getTracks().forEach(t=>t.stop());VA.stream=null}
+  const vd=$("#vaCam");if(vd){try{vd.pause()}catch(e){}vd.srcObject=null;vd.hidden=true}}
+async function vaCapture(){
+  const vd=$("#vaCam"),v=vaVisit(),o=vaObs();if(!VA.stream||!vd||!vd.videoWidth||!v||!o)return false;
+  const c=document.createElement("canvas");c.width=vd.videoWidth;c.height=vd.videoHeight;c.getContext("2d").drawImage(vd,0,0);
+  const fl=$("#vaFlash");if(fl){fl.classList.remove("on");void fl.offsetWidth;fl.classList.add("on")}
+  try{const raw=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(),"image/jpeg",0.92));
+    await storePhoto(v,o,raw,new Date());VA.shots++;saveVisit(v,true);vaRender();return true}catch(e){return false}}
+function vaSummary(v){const s=stats([v]);const parts=["انحفظت زيارة "+(v.site||v.area||"")+"."];
+  parts.push(s.obs?(s.obs===1?"مشاهدة وحدة":s.obs+" مشاهدات")+(s.viol?"، و"+(s.viol===1?"مخالفة وحدة":s.viol+" مخالفات"):"")+".":"بدون مشاهدات.");
+  if(s.pics)parts.push(s.pics===1?"صورة وحدة.":s.pics+" صور.");
+  parts.push(v.lat?"الإحداثيات مسجلة.":"ما انسجلت الإحداثيات، أضفها من الشاشة.");
+  parts.push("المغادرة "+v.departure+".");return parts.join(" ")}
+async function vaFinish(){const v=vaVisit();if(!v)return vaStop();
+  v.obs=v.obs.filter(o=>o.type);if(!v.obs.length)v.obs=[{id:uid(),type:NO_OBS,desc:"",action:A_NONE,photos:[]}];
+  v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);
+  const g=++VA.gen;VA.mode="speak";VA.say=vaSummary(v);vaCamOff();vaRender();
+  await speak(VA.say);if(g!==VA.gen)return;
+  vaClose();S.view="today";S.editId=null;render();toast("تم حفظ الزيارة")}
+async function vaCancel(){const v=vaVisit();const g=++VA.gen;vaCamOff();if(v)await removeVisit(v);
+  VA.mode="speak";VA.say="انلغت الزيارة.";vaRender();await speak(VA.say);if(g!==VA.gen)return;
+  vaClose();S.view="today";S.editId=null;render()}
+/* stop button / «وقف»: keep what was recorded and hand over to the screen */
+function vaStop(keepSpeech){
+  if(!VA.on)return;const v=vaVisit();
+  if(!keepSpeech){try{window.speechSynthesis.cancel()}catch(e){}}
+  vaClose();
+  if(v&&!v.site&&!v.obs.length){removeVisit(v).then(()=>render());S.view="today";toast("وقف المساعد، وما انحفظت زيارة");return render()}
+  if(v){v.obs=v.obs.filter(o=>o.type||o.desc||o.photos.length);saveVisit(v,true);S.view="visit";S.editId=v.id;S.addingSite=false;toast("وقف المساعد. كمّل الزيارة من هنا")}
+  render()}
+function vaClose(){VA.on=false;VA.gen++;VA.mode="";
+  if(VA.rec){try{VA.rec.abort()}catch(e){}VA.rec=null}
+  vaCamOff();if(VA.lock){VA.lock.release().catch(()=>{});VA.lock=null}
+  $("#va").hidden=true;document.documentElement.style.overflow=""}
+function vaQuick(){const st=S.settings;
+  const b=(v,l,c)=>`<button class="va-q ${c||""}" data-va="ans" data-v="${esc(v)}">${esc(l||v)}</button>`;
+  switch(VA.step){
+    case "area":return Object.keys(st.areas).map(a=>b(a)).join("");
+    case "site":{const v=vaVisit();return((v&&st.areas[v.area])||[]).map(s=>b(s)).join("")}
+    case "type":return st.types.filter(t=>t!==NO_OBS).map(t=>b(t)).join("");
+    case "action":return b("مخالفة","تم تحرير مخالفة","v")+b("مشاهدة بس","مشاهدة فقط","o");
+    case "photo":return b("خلاص","خلاص، كمّل");
+    case "desc":return "";
+    default:return b("نعم","نعم","y")+b("لا","لا","n")}}
+function vaRender(){
+  const el=$("#va");if(!el||el.hidden)return;const v=vaVisit();
+  const st={speak:"يتكلم…",listen:"أسمعك… تكلّم",busy:"لحظة…",wait:"متوقف"}[VA.mode]||"";
+  el.dataset.mode=VA.mode||"";
+  $("#vaState").textContent=st;
+  const s=v?stats([v]):null;
+  $("#vaCtx").textContent=v?[v.area||"—",v.site||"—",(v.obs.filter(o=>o.type&&o.type!==NO_OBS).length)+" مشاهدة",s.pics+" صور",v.lat?"📍":""].filter(Boolean).join(" · "):"";
+  $("#vaSay").textContent=VA.say;
+  $("#vaHeard").textContent=VA.heard?"سمعت: «"+VA.heard+"»":"";
+  const cam=VA.step==="photo"&&VA.stream;$("#vaCamBox").hidden=!cam;$("#vaShots").textContent=VA.shots?VA.shots+" 📷":"";
+  $("#vaQuick").innerHTML=VA.mode==="wait"?"":vaQuick();
+  $("#vaTalk").hidden=VA.mode!=="wait"}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-va]");if(!b||!VA.on)return;
+  const k=b.dataset.va;
+  if(k==="stop")return vaStop();
+  if(k==="repeat")return vaAsk();
+  if(k==="back")return vaBack();
+  if(k==="shoot"){if(VA.step==="photo")vaShoot();return}
+  if(k==="talk"){VA.viaTap=true;VA.silent=0;const g=++VA.gen;return vaListen(g)}   // starts the mic inside the tap
+  if(k==="ans"){if(VA.rec){try{VA.rec.abort()}catch(e){}}try{window.speechSynthesis.cancel()}catch(e){}VA.gen++;return vaHandle([b.dataset.v])}
+});
+document.addEventListener("visibilitychange",()=>{if(!VA.on)return;
+  if(document.hidden){VA.gen++;if(VA.rec){try{VA.rec.abort()}catch(e){}}try{window.speechSynthesis.cancel()}catch(e){}VA.mode="wait";VA.say="متوقف. اضغط «تكلّم» عشان نكمل.";}
+  else if(VA.mode==="wait")vaAsk("نكمل.")});
+window.__va={VA,fuzzy,bestMatch,yesNo,arKey};
+
 /* ---------------- events ---------------- */
 document.addEventListener("click",async e=>{
   const tab=e.target.closest(".tab");
@@ -882,6 +1208,7 @@ document.addEventListener("click",async e=>{
   if(S.armed&&!["wipe","delVisit","rmObs"].includes(act))S.armed=null;
   switch(act){
     case "new":return newVisit();
+    case "va":return vaStart();
     case "edit":S.view="visit";S.editId=b.dataset.id;S.addingSite=false;S.addingType=null;S.armed=null;return render();
     case "back":S.view="today";S.editId=null;S.armed=null;return render();
     case "area":if(!v)return;v.area=b.dataset.v;if(!(S.settings.areas[v.area]||[]).includes(v.site))v.site="";S.addingSite=false;saveVisit(v);return render(true);
@@ -914,8 +1241,7 @@ document.addEventListener("click",async e=>{
       if(!v.departure)v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);
       S.view="today";S.editId=null;toast("تم حفظ الزيارة");return render()}
     case "delVisit":{if(!v)return;if(S.armed!=="visit"){S.armed="visit";render(true);setTimeout(()=>{if(S.armed==="visit"){S.armed=null;render(true)}},4000);return}
-      for(const o of v.obs)for(const p of o.photos)await delPhoto(p);
-      await DB.del("visits",v.id).catch(()=>{});if(Cloud.ok){try{await Cloud.col.doc(v.id).delete()}catch(e){}}S.dirty.delete(v.id);S.visits=S.visits.filter(x=>x.id!==v.id);S.armed=null;S.view="today";S.editId=null;toast("تم حذف الزيارة");return render()}
+      await removeVisit(v);S.armed=null;S.view="today";S.editId=null;toast("تم حذف الزيارة");return render()}
     case "range":S.range=b.dataset.v;return render(true);
     case "zip":return doExport(true);
     case "report":return doExport(false);
