@@ -1095,7 +1095,7 @@ function vaHandle(alts){
       if(!a)return vaMiss();if(o){o.action=a;saveVisit(v)}
       return vaGo("photo",a===A_VIOL?"تم تحرير مخالفة.":"مشاهدة فقط.")}
     case "photo":
-      if(/(^| )(لا|ما|خلاص|خلصت|بس|تم|كمل|كفايه|تخطي|التالي|مافي|ما في|بعدين)( |$)/.test(n))return vaGo("more",VA.shots?(VA.shots===1?"صورة واحدة.":vaPics(VA.shots)):"بدون صور.");
+      if(/(^| )(لا|ما|خلاص|خلصت|بس|تم|كمل|كفايه|تخطي|التالي|مافي|ما في|بعدين)( |$)/.test(n))return vaGo("more",VA.shots?vaPics(VA.shots):"بدون صور.");
       if(/صور|التقط|كليك|شوت|صوره/.test(n))return vaShoot();
       return vaMiss();
     case "finish":
@@ -1136,9 +1136,9 @@ async function vaCapture(){
   const fl=$("#vaFlash");if(fl){fl.classList.remove("on");void fl.offsetWidth;fl.classList.add("on")}
   try{const raw=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(),"image/jpeg",0.92));
     await storePhoto(v,o,raw,new Date());VA.shots++;saveVisit(v,true);vaRender();return true}catch(e){return false}}
-function vaPics(n){return n===1?"صورة وحدة.":n===2?"صورتين.":n+" صور."}
+function vaPics(n){return n===1?"صورة واحدة.":n===2?"صورتين.":n+" صور."}
 function vaSummary(v){const s=stats([v]);const parts=["انحفظت زيارة "+(v.site||v.area||"")+"."];
-  parts.push(s.obs?(s.obs===1?"مشاهدة وحدة":s.obs+" مشاهدات")+(s.viol?"، و"+(s.viol===1?"مخالفة وحدة":s.viol+" مخالفات"):"")+".":"بدون مشاهدات.");
+  parts.push(s.obs?(s.obs===1?"مشاهدة واحدة":s.obs+" مشاهدات")+(s.viol?"، و"+(s.viol===1?"مخالفة واحدة":s.viol+" مخالفات"):"")+".":"بدون مشاهدات.");
   if(s.pics)parts.push(vaPics(s.pics));
   parts.push(v.lat?"الإحداثيات مسجلة.":"ما انسجلت الإحداثيات، أضفها من الشاشة.");
   parts.push("المغادرة "+v.departure+".");return parts.join(" ")}
