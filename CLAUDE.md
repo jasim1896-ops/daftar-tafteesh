@@ -73,8 +73,13 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 - Matching: `arNorm` (hamza/ta-marbuta/alef-maqsura/diacritics), `arPhon` (Gulf: ج→ي, ق→ك, ذ→ز, ث→س, ظ→ض), filler words and «ال» stripped, Levenshtein over word windows (partial-phrase matches ×0.9). Types also by keyword (`VA_TYPE_KW`) or spoken number. After 2 misses it reads the options.
 - Commands anytime (≤3 words): «عيد», «رجوع», «إلغاء» (confirm, deletes the visit), «وقف». «إيقاف» button keeps what was recorded and opens the visit editor (an empty visit is deleted).
 - Each answer is read back. Two silences → pauses with a big green «تكلّم» button (also the fallback if iOS refuses to start the mic outside a tap). Camera: `getUserMedia` live preview; «صوّر» or tapping the preview captures; photos go through the same `storePhoto` (1920 px + stamp). GPS taken at start. Departure stamped on «نعم» at «ننهي الزيارة؟», then a spoken summary. Screen wake lock while running.
+- Voice: Settings card «صوت المساعد الآلي» picks the Arabic voice (`settings.voice` = voiceURI) and speed (`settings.rate`, 0.8–1.2); default prefers downloaded «Enhanced/Premium» voices. iOS: download one under Settings → Accessibility → Spoken Content → Voices → Arabic.
 - Visits get `src:"voice"` (shows the «صوتي» pill). Same data model, Excel export unchanged.
 - **Unverified on a real iPhone:** whether iOS lets the mic restart after speech without a tap, and whether speech recognition works while the camera is open. Fallbacks exist (tap «تكلّم», tap the preview, «خلاص، كمّل»). Ask him how it behaved.
+
+## Field test 2026-10-29/30 (voice assistant)
+- Works in the field. He finds the conversation too rigid (only fixed keywords) and the default iOS voice unconvincing. Next ideas: free-form understanding via the Claude API (needs his approval and a paid key), and higher-quality pre-recorded prompts. He wants Higgsfield for the demo video (no connector exists; prompts are in the script doc).
+- Deliverables made: management deck (claude.ai Slides artifact) and video script doc with Higgsfield prompts.
 
 ## Testing
 - Voice flow: Playwright with a mocked `webkitSpeechRecognition` (scripted answers queue) and `speechSynthesis`, Chromium flags `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; route the cdnjs JSZip URL to a local copy (cdnjs is blocked in the cloud sandbox).

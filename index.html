@@ -470,6 +470,13 @@ function vExport(){
   </div>`;
 }
 
+function vVoiceCard(){const vs=vaVoices(),cur=vaVoice(),rate=S.settings.rate||1,good=vs.some(x=>vaQuality(x)>0);
+  return `<div class="card stack"><h3>صوت المساعد الآلي</h3>
+    ${vs.length?`<label class="f">الصوت<select class="inp" id="voiceSel">${vs.map(x=>`<option value="${esc(x.voiceURI)}" ${cur&&x.voiceURI===cur.voiceURI?"selected":""}>${esc(x.name)} (${esc(x.lang)})${vaQuality(x)?" ★":""}</option>`).join("")}</select></label>`:'<div class="small muted">ما في أصوات عربية على هذا الجهاز.</div>'}
+    <label class="f">السرعة <span class="num" id="voiceRateOut">${rate.toFixed(2)}×</span><input type="range" id="voiceRate" min="0.8" max="1.2" step="0.05" value="${rate}"></label>
+    <button class="btn block" data-act="voiceTest">${IC.mic}جرّب الصوت</button>
+    ${good?"":`<div class="hint">${IC.info}<span>لصوت أوضح وأطبع: في الآيفون افتح الإعدادات ← تسهيلات الاستخدام ← المحتوى المنطوق ← الأصوات ← العربية، ونزّل صوت «محسّن» (Enhanced). بعدها سكّر التطبيق وافتحه، واختر الصوت اللي عليه ★ هنا.</span></div>`}
+  </div>`}
 function vSettings(){
   const st=S.settings;
   return `<h2 class="sec">الإعدادات</h2>
@@ -485,6 +492,7 @@ function vSettings(){
     <div class="addline"><input class="inp" id="newType" placeholder="نوع جديد"><button class="btn" data-act="addType">إضافة</button></div>
     <div class="hint">${IC.info}<span>أي موقع أو نوع جديد تضيفه هنا، أضفه كذلك في شيت «الإعدادات» بملف الإكسل عشان يظهر في قوائمه.</span></div>
   </div>
+  ${window.speechSynthesis?vVoiceCard():""}
   <div class="card stack"><h3>البيانات</h3>
     <div class="small muted" id="storeInfo">${Cloud.ok?"زياراتك وصورك محفوظة في حسابك، وتظهر لك من أي جهاز تفتح منه التطبيق.":DB.ok?"البيانات محفوظة على هذا الجهاز فقط.":"البيانات مؤقتة في هذه الجلسة فقط."}</div>
     <button class="btn danger block ${S.armed==="wipe"?"armed":""}" data-act="wipe">${S.armed==="wipe"?"اضغط مرة ثانية لحذف كل الزيارات والصور":"حذف كل البيانات"}</button>
@@ -960,11 +968,15 @@ const VA_TRANSIENT=new Set(["pick","newSite","cancel"]);
 const VA_Q={area:"وين المنطقة؟",site:"وش الموقع؟",hasObs:"في مشاهدات؟",type:"وش نوع المشاهدة؟",desc:"صِف المشاهدة.",action:"تم تحرير مخالفة، ولا مشاهدة بس؟",more:"في مشاهدة ثانية؟",finish:"ننهي الزيارة؟",cancel:"أكيد تلغي الزيارة؟"};
 const VA={on:false,gen:0,step:"",hist:[],vid:null,oid:null,fresh:null,miss:0,silent:0,heard:"",say:"",mode:"",rec:null,stream:null,lock:null,tmp:null,shots:0,viaTap:false,rej:new Set()};
 
-function vaVoice(){const vs=(window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang));
-  return vs.find(x=>/AE/i.test(x.lang))||vs.find(x=>/SA/i.test(x.lang))||vs[0]||null}
+/* Arabic voices, best first: downloaded «Enhanced/Premium» voices sound far more natural than the default compact one */
+const vaQuality=x=>/premium|enhanced|محسّن|محسن|neural|natural/i.test(x.name)?2:/siri/i.test(x.name)?1:0;
+function vaVoices(){try{return(window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang))
+  .sort((a,b)=>vaQuality(b)-vaQuality(a)||(/AE/i.test(b.lang)-/AE/i.test(a.lang))||(/SA/i.test(b.lang)-/SA/i.test(a.lang)))}catch(e){return[]}}
+function vaVoice(){const vs=vaVoices(),want=S.settings.voice;return(want&&vs.find(x=>x.voiceURI===want))||vs[0]||null}
+if(window.speechSynthesis)try{window.speechSynthesis.addEventListener("voiceschanged",()=>{if(S.view==="settings")render(true)})}catch(e){}
 function speak(t){return new Promise(res=>{const ss=window.speechSynthesis;if(!ss||!t)return res();
   try{ss.cancel()}catch(e){}
-  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();if(vo){u.voice=vo;u.lang=vo.lang}else u.lang="ar-SA";u.rate=1;
+  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();if(vo){u.voice=vo;u.lang=vo.lang}else u.lang="ar-SA";u.rate=S.settings.rate||1;
   let done=false;const tm=setTimeout(()=>end(),2500+t.length*120);function end(){if(done)return;done=true;clearTimeout(tm);res()}
   u.onend=end;u.onerror=end;try{ss.speak(u)}catch(e){end()}})}
 /* one utterance; resolves {alts:[...]} or {silent:true} or {err} */
@@ -1252,6 +1264,7 @@ document.addEventListener("click",async e=>{
       const d=[...document.querySelectorAll("details.area")].find(x=>x.querySelector("summary span").textContent===a);if(d)d.open=true;return}
     case "addArea":{const n=($("#newArea").value||"").trim();if(!n)return;if(!S.settings.areas[n])S.settings.areas[n]=[];await saveSettings();toast("أضيفت منطقة «"+n+"»");return render(true)}
     case "addType":{const n=($("#newType").value||"").trim();if(!n)return;if(!S.settings.types.includes(n))S.settings.types.push(n);await saveSettings();return render(true)}
+    case "voiceTest":speak("وين المنطقة؟ ليوا، الثروانية. في مشاهدات؟");return;
     case "rmType":S.settings.types.splice(+b.dataset.i,1);await saveSettings();return render(true);
     case "siri":$("#siriIn").value="";return $("#siriIn").click();
     case "copyPrompt":{const t=($("#drivePrompt")||{}).textContent||"";
@@ -1273,6 +1286,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("input",e=>{
   const t=e.target,v=visit(S.editId);
   if(t.id==="setName"){S.settings.name=t.value;saveSettingsSoon();return}
+  if(t.id==="voiceRate"){S.settings.rate=+t.value;const o=$("#voiceRateOut");if(o)o.textContent=(+t.value).toFixed(2)+"×";saveSettingsSoon();return}
   if(t.id==="repNote"){setNote(t.value);return}
   if(t.id==="coordPaste"&&v){const c=parseCoords(t.value);if(c){v.lat=c[0];v.lng=c[1];v.acc="";saveVisit(v);render(true);toast("تم حفظ الإحداثيات")}return}
   if(!v)return;
@@ -1282,6 +1296,7 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
   const t=e.target,v=visit(S.editId);
   if(t.id==="rFrom"){S.from=t.value;return render(true)}
+  if(t.id==="voiceSel"){S.settings.voice=t.value;saveSettings();speak("هذا صوت المساعد.");return}
   if(t.id==="rTo"){S.to=t.value;return render(true)}
   if(t.id==="siteSel"&&v){if(t.value==="__new"){S.addingSite=true;return render(true)}v.site=t.value;saveVisit(v);return}
   if(t.dataset.of==="type"&&v){const o=v.obs.find(x=>x.id===t.dataset.oid);if(!o)return;
