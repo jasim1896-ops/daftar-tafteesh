@@ -1079,7 +1079,7 @@ function vaHandle(alts){
       if(!a)return vaMiss();if(o){o.action=a;saveVisit(v)}
       return vaGo("photo",a===A_VIOL?"تم تحرير مخالفة.":"مشاهدة فقط.")}
     case "photo":
-      if(/(^| )(لا|ما|خلاص|خلصت|بس|تم|كمل|كفايه|تخطي|التالي|مافي|ما في|بعدين)( |$)/.test(n))return vaGo("more",VA.shots?vaPics(VA.shots):"بدون صور.");
+      if(/(^| )(لا|ما|خلاص|خلصت|بس|تم|كمل|كفايه|تخطي|التالي|مافي|ما في|بعدين)( |$)/.test(n))return vaGo("more",VA.shots?(VA.shots===1?"صورة واحدة.":vaPics(VA.shots)):"بدون صور.");
       if(/صور|التقط|كليك|شوت|صوره/.test(n))return vaShoot();
       return vaMiss();
     case "finish":
