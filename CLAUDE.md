@@ -79,7 +79,9 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 
 ## Field test 2026-10-29/30 (voice assistant)
 - Works in the field. He finds the conversation too rigid (only fixed keywords) and the default iOS voice unconvincing. Next ideas: free-form understanding via the Claude API (needs his approval and a paid key), and higher-quality pre-recorded prompts. He wants Higgsfield for the demo video (no connector exists; prompts are in the script doc).
-- Deliverables made: management deck (claude.ai Slides artifact) and video script doc with Higgsfield prompts.
+- Deliverables made: management deck https://claude.ai/artifact/LcgcN5zez7KvCU19fxWM8E (12 slides, placeholders [__] for his real numbers) and video script doc https://claude.ai/artifact/9b2DDnFSSkfgT72G1dcyZS (11 scenes, English Higgsfield prompts per scene; open question there: AI-generated inspector or himself).
+- 2026-10-30: he connected the official Higgsfield MCP connector (https://mcp.higgsfield.ai/mcp, OAuth) at claude.ai. Next session: read the script doc, generate the scenes one by one with Higgsfield (it spends his credits: one generation per scene, redo only what he asks), keep one consistent inspector character, no official logos. Also try Higgsfield voiceover for the narrator and maybe better assistant prompts.
+- The voice picker commit (460c146) is on `claude/busy-planck-ovjvn7`, not merged to main yet; ask before merging.
 
 ## Testing
 - Voice flow: Playwright with a mocked `webkitSpeechRecognition` (scripted answers queue) and `speechSynthesis`, Chromium flags `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; route the cdnjs JSZip URL to a local copy (cdnjs is blocked in the cloud sandbox).
