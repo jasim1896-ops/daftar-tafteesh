@@ -228,7 +228,7 @@ for i in range(N):
     ws.cell(r, 19, f'=IF($B{r}="","",$B{r}-WEEKDAY($B{r},3))')
     ws.cell(r, 20, f'=IF($B{r}="",0,IF(COUNTIFS($B${R0}:$B{r},$B{r},$D${R0}:$D{r},$D{r})=1,1,0))')
     ws.cell(r, 21, f'=IF($B{r}="",0,IF(COUNTIFS($B${R0}:$B{r},$B{r},$C${R0}:$C{r},$C{r})=1,1,0))')
-    ws.cell(r, 22, f'=IF(OR($B{r}="",$G{r}="",$G{r}="لا توجد مشاهدات"),0,1)')
+    ws.cell(r, 22, f'=IF(OR($B{r}="",$G{r}="",$G{r}="لا توجد مشاهدات",$G{r}="معاينة مزرعة"),0,1)')
     ws.cell(r, 23, f'=IF(AND($B{r}<>"",$I{r}="تم تحرير مخالفة"),1,0)')
     ws.cell(r, 24, f'=IF($B{r}="","",IF($S{r}=WkStart,COUNTIF($S${R0}:$S{r},WkStart),""))')
 style(ws, f"A{R0}:P{R1}", f(10), None, RIGHT)

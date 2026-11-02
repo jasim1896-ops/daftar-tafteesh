@@ -193,6 +193,21 @@ ol.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;g
 .va-nav button{min-height:58px;border-radius:14px;border:1.5px solid #2E3E36;background:transparent;color:#F2F6F3;font-size:1.1rem;font-weight:600}
 .va-stop{min-height:84px;border-radius:20px;border:0;background:#D63A2B;color:#fff;font-size:1.7rem;font-weight:700;flex:none}
 .btn.va-go{background:#13231C;border-color:#13231C;color:#fff;font-weight:700}
+/* survey (زيارة معاينة) */
+:root{--sv:#5B3FA0;--sv-soft:#ECE6F7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--sv:#B7A2EC;--sv-soft:#2A2340}}
+:root[data-theme="dark"]{--sv:#B7A2EC;--sv-soft:#2A2340}
+.pill.surv{background:var(--sv-soft);color:var(--sv)}
+.btn.sv-go{border:1.5px solid var(--sv);color:var(--sv);background:var(--surface);font-weight:600}
+.sv-tag{display:flex;align-items:center;gap:10px;background:var(--sv-soft);color:var(--sv);border-radius:12px;padding:10px 12px;font-weight:600;font-size:.92rem}
+.sv-tag svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.seg button.y[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.seg button.n[aria-pressed="true"]{background:var(--obs);border-color:var(--obs);color:#fff}
+.stepper{display:grid;grid-template-columns:46px 1fr 46px;gap:6px;align-items:center}
+.stepper button{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:1.35rem;font-weight:600;line-height:1}
+.stepper .inp{text-align:center;font-variant-numeric:tabular-nums;font-weight:700;font-size:1.15rem;padding:8px 4px}
+.pdf-pages{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.pdf-pages img{height:200px;width:auto;border:1px solid var(--line);border-radius:6px;background:#fff;flex:none}
 :root[data-theme="dark"] .btn.va-go{background:#3DBB8E;border-color:#3DBB8E;color:#06140E}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.va-go{background:#3DBB8E;border-color:#3DBB8E;color:#06140E}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -232,6 +247,8 @@ ol.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;g
 "use strict";
 /* ---------------- constants ---------------- */
 const NO_OBS="لا توجد مشاهدات", A_VIOL="تم تحرير مخالفة", A_OBS="مشاهدة فقط", A_NONE="لا يوجد";
+const SURV="معاينة مزرعة", A_SURV="معاينة";
+const DEFAULT_COMPANIES=["شركة العيون لحفر الآبار","شركة بازلت لحفر الآبار","شركة الأنهار لحفر الآبار"];
 const DEFAULT_AREAS={
   "ليوا":["الثروانية","الجبانة","مزيرعة","حميم","بوعوانة","اليارية","موقب","الخيس","نشاش","وذين","اليبانة","يرّة","موصل","قرمدة","نفير","الرايقة","المارية","المارية الغربية","عتاب","خنّور","الحميضي","الصبخة","حفيف","قطوف","الهيلة","عرادة","ملقطة","العيد","أم القرين","العاطر","الهذي","المشرب","مهدر بن عصيان"],
   "حبشان":["حبشان الشرقية","حبشان الغربية"],
@@ -252,7 +269,9 @@ const IC={
   back:'<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
   check:'<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>',
   clock:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-  zip:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>'
+  zip:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
+  doc:'<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
+  mail:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>'
 };
 
 /* ---------------- utils ---------------- */
@@ -344,14 +363,18 @@ async function syncPending(){
 window.addEventListener("online",()=>syncPending());
 setInterval(()=>{if(S.dirty.size||S.pendingPhotos||S.appDirty)syncPending()},45000);
 
-function defaults(){return{name:"جاسم الحمادي",areas:JSON.parse(JSON.stringify(DEFAULT_AREAS)),types:DEFAULT_TYPES.slice()}}
+function defaults(){return{name:"جاسم الحمادي",areas:JSON.parse(JSON.stringify(DEFAULT_AREAS)),types:DEFAULT_TYPES.slice(),companies:DEFAULT_COMPANIES.slice()}}
+function fixSettings(st){if(!Array.isArray(st.companies))st.companies=DEFAULT_COMPANIES.slice();return st}
 async function saveSettings(){try{await DB.put("kv",S.settings,"settings")}catch(e){}pushApp()}
 const saveTimers=new Map();
 function saveVisit(v,now){v.updatedAt=Date.now();const go=()=>DB.put("visits",v).catch(()=>{}).then(()=>pushVisit(v)).then(syncState);
   clearTimeout(saveTimers.get(v.id));if(now)return go();saveTimers.set(v.id,setTimeout(go,350))}
 const visit=id=>S.visits.find(v=>v.id===id);
 const effObs=v=>v.obs.length?v.obs:[{id:"_",type:NO_OBS,desc:"",action:A_NONE,photos:[]}];
-function stats(list){let o=0,x=0,only=0,clean=0,pics=0;for(const v of list){const ob=effObs(v);if(ob.length===1&&ob[0].type===NO_OBS)clean++;for(const a of ob){if(a.type!==NO_OBS)o++;if(a.action===A_VIOL)x++;if(a.action===A_OBS)only++;pics+=a.photos.length}}return{visits:list.length,obs:o,viol:x,only,clean,pics}}
+const isSurv=v=>!!v&&v.kind==="survey";
+function stats(list){let o=0,x=0,only=0,clean=0,pics=0,surv=0;for(const v of list){const ob=effObs(v);
+  if(isSurv(v)){surv++;for(const a of ob)pics+=a.photos.length;continue}
+  if(ob.length===1&&ob[0].type===NO_OBS)clean++;for(const a of ob){if(a.type!==NO_OBS)o++;if(a.action===A_VIOL)x++;if(a.action===A_OBS)only++;pics+=a.photos.length}}return{visits:list.length,obs:o,viol:x,only,clean,pics,surv}}
 const sortVisits=l=>l.slice().sort((a,b)=>(a.date+(a.arrival||"")).localeCompare(b.date+(b.arrival||"")));
 
 /* ---------------- top bar & tabs ---------------- */
@@ -369,11 +392,12 @@ function renderTabs(){
 /* ---------------- shared bits ---------------- */
 function visitTags(v){const s=stats([v]);const t=[];if(v.src==="siri"||v.src==="voice")t.push('<span class="pill siri">صوتي</span>');
   if(v.status==="open")t.push('<span class="pill live">جارية</span>');
+  if(isSurv(v)){t.push('<span class="pill surv">معاينة</span>');return t.join("")}
   if(s.viol)t.push(`<span class="pill viol">مخالفة${s.viol>1?" ×"+s.viol:""}</span>`);
   else if(s.only)t.push(`<span class="pill obs">مشاهدة${s.only>1?" ×"+s.only:""}</span>`);
   else if(s.clean)t.push('<span class="pill ok">بلا مشاهدات</span>');
   return t.join("")}
-function visitRow(v,showDate){const ob=effObs(v);const sum=ob.map(o=>o.type).filter((x,i,a)=>a.indexOf(x)===i).join("، ");const pics=stats([v]).pics;
+function visitRow(v,showDate){const ob=effObs(v);const sum=isSurv(v)?[SURV,v.sv.farmNo?"رقم "+v.sv.farmNo:"",v.sv.owner].filter(Boolean).join(" · "):ob.map(o=>o.type).filter((x,i,a)=>a.indexOf(x)===i).join("، ");const pics=stats([v]).pics;
   return `<button class="vrow" data-act="edit" data-id="${v.id}"><div class="vtime">${showDate?esc(DAYS[parseISO(v.date).getDay()]):esc(v.arrival||v.departure||"--:--")}</div>
   <div class="vmain"><b>${esc(v.area||"—")} · ${esc(v.site||"بدون موقع")}</b><span>${esc(sum)}${pics?" · "+pics+" صور":""}</span></div><div class="vtags">${visitTags(v)}</div></button>`}
 function statTiles(s,label){return `<div class="stats" aria-label="${esc(label)}"><div class="stat v"><b>${s.visits}</b><span>الزيارات</span></div><div class="stat o"><b>${s.obs}</b><span>المشاهدات</span></div><div class="stat x"><b>${s.viol}</b><span>المخالفات</span></div></div>`}
@@ -390,9 +414,10 @@ function vToday(){
   ${Cloud.ok&&(S.dirty.size||S.pendingPhotos)?'<div class="banner">في تغييرات أو صور بانتظار الإنترنت، وبترتفع تلقائيًا أول ما ترجع التغطية.</div>':""}
   <section class="day"><div class="day-date">${esc(longDate(d))}</div>
     <div class="sched">${sch?`<span class="pill acc">جدول اليوم</span><span>${esc(sch.t)}</span>`:'<span class="pill ok">عطلة نهاية الأسبوع</span>'}</div></section>
-  ${open.map(v=>`<div class="live-card"><div><b>زيارة جارية: ${esc(v.area)} · ${esc(v.site||"بدون موقع")}</b><span class="small muted">منذ ${esc(v.arrival||"")} — ${esc(shortDate(v.date))}</span></div><button class="btn primary" data-act="edit" data-id="${v.id}">متابعة</button></div>`).join("")}
+  ${open.map(v=>`<div class="live-card"><div><b>${isSurv(v)?"معاينة جارية":"زيارة جارية"}: ${esc(v.area)} · ${esc(v.site||"بدون موقع")}</b><span class="small muted">منذ ${esc(v.arrival||"")} — ${esc(shortDate(v.date))}</span></div><button class="btn primary" data-act="edit" data-id="${v.id}">متابعة</button></div>`).join("")}
   ${vaSupported()&&!S.speechBlocked?`<button class="btn big va-go" data-act="va">${IC.mic}المساعد الآلي — زيارة بالصوت</button>`:""}
   <button class="btn primary big" data-act="new">${IC.plus}بدء زيارة جديدة</button>
+  <button class="btn big sv-go" data-act="svNew">${IC.doc}زيارة معاينة مزرعة (طلب حفر بئر)</button>
   ${S.aiBusy==="siri"?'<div class="card"><span class="spin"></span> جاري قراءة مشاهدات مساعد القيادة…</div>':S.importOpen?`<div class="card stack"><h3>استيراد من مساعد القيادة</h3>
     <div class="small">في محادثة مساعد القيادة اضغط مطولًا على آخر رد (التصدير) ← نسخ، ثم الصقه هنا.</div>
     <textarea class="inp" id="impText" placeholder="الصق رد المساعد هنا"></textarea>
@@ -431,7 +456,7 @@ function vExport(){
     ${S.range==="custom"?`<div class="grid2"><label class="f">من<input class="inp" type="date" id="rFrom" value="${esc(S.from||today())}"></label><label class="f">إلى<input class="inp" type="date" id="rTo" value="${esc(S.to||today())}"></label></div>`:""}
     ${S.range!=="all"&&S.range!=="custom"?`<div class="small muted">${esc(longDate(rangeDates()[0]))} – ${esc(longDate(rangeDates()[1]))}</div>`:""}
     ${statTiles(s,"ملخص الفترة")}
-    <div class="small muted num">${s.only} مشاهدة دون مخالف · ${s.clean} زيارة بلا مشاهدات · ${s.pics} صورة</div>
+    <div class="small muted num">${s.only} مشاهدة دون مخالف · ${s.clean} زيارة بلا مشاهدات${s.surv?" · "+s.surv+" معاينة مزرعة":""} · ${s.pics} صورة</div>
     ${open?`<div class="banner">في ${open} زيارة جارية ما انتهت. تدخل في الملف بحالتها الحالية.</div>`:""}
   </div>
   <div class="card stack">
@@ -468,6 +493,10 @@ function vSettings(){
     <div class="chips">${st.types.map((t,i)=>`<span class="rm-chip">${esc(t)}<button aria-label="حذف ${esc(t)}" data-act="rmType" data-i="${i}">×</button></span>`).join("")}</div>
     <div class="addline"><input class="inp" id="newType" placeholder="نوع جديد"><button class="btn" data-act="addType">إضافة</button></div>
     <div class="hint">${IC.info}<span>أي موقع أو نوع جديد تضيفه هنا، أضفه كذلك في شيت «الإعدادات» بملف الإكسل عشان يظهر في قوائمه.</span></div>
+  </div>
+  <div class="card stack"><h3>شركات حفر الآبار (للمعاينات)</h3>
+    <div class="chips">${(st.companies||[]).map((t,i)=>`<span class="rm-chip">${esc(t)}<button aria-label="حذف ${esc(t)}" data-act="rmCo" data-i="${i}">×</button></span>`).join("")}</div>
+    <div class="addline"><input class="inp" id="newCo" placeholder="اسم شركة جديدة"><button class="btn" data-act="addCo">إضافة</button></div>
   </div>
   <div class="card stack"><h3>البيانات</h3>
     <div class="small muted" id="storeInfo">${Cloud.ok?"زياراتك وصورك محفوظة في حسابك، وتظهر لك من أي جهاز تفتح منه التطبيق.":DB.ok?"البيانات محفوظة على هذا الجهاز فقط.":"البيانات مؤقتة في هذه الجلسة فقط."}</div>
@@ -512,6 +541,7 @@ function obsCard(v,o,i){
   </div>`}
 function vVisit(){
   const v=visit(S.editId);if(!v){S.view="today";return vToday()}
+  if(isSurv(v))return vSurvey(v);
   const none=v.obs.length===1&&v.obs[0].type===NO_OBS;
   return `
   <div class="card stack"><h3>المكان</h3>
@@ -537,7 +567,7 @@ function renderFooter(){
   if(S.view!=="visit"){f.innerHTML="";return}
   const v=visit(S.editId);if(!v){f.innerHTML="";return}
   f.innerHTML=`<div class="footer-bar"><div class="wrap"><span class="saved" id="savedState">${Cloud.ok?"محفوظ في حسابك":"محفوظ على الجهاز"}</span>
-   ${v.status==="open"?`<button class="btn primary" data-act="finish">${IC.check}إنهاء الزيارة</button>`:`<button class="btn primary" data-act="back">تم</button>`}</div></div>`;
+   ${v.status==="open"?`<button class="btn primary" data-act="finish">${IC.check}${isSurv(v)?"إنهاء المعاينة":"إنهاء الزيارة"}</button>`:`<button class="btn primary" data-act="back">تم</button>`}</div></div>`;
 }
 async function hydrateThumbs(){for(const img of document.querySelectorAll("img[data-pid]")){if(!img.src){const u=await photoURL(img.dataset.pid);if(u)img.src=u}}}
 
@@ -605,7 +635,7 @@ async function stampPhoto(file,v,taken){
   g.fillStyle="rgba(0,0,0,0.55)";g.fillRect(0,h-bh,w,bh);
   g.fillStyle="#FFFFFF";g.font=`600 ${fs}px "Readex Pro",Tahoma,Arial,sans-serif`;g.textBaseline="top";
   try{g.direction="rtl"}catch(e){}g.textAlign="right";
-  lines.forEach((t,i)=>g.fillText(t,w-pad,h-bh+pad+i*lh));
+  lines.forEach((t,i)=>{const ltr=/^-?\d+\.\d+, -?\d+\.\d+$/.test(t);try{g.direction=ltr?"ltr":"rtl"}catch(e){}g.fillText(t,w-pad,h-bh+pad+i*lh)});
   return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(),"image/jpeg",0.82));
 }
 
@@ -836,7 +866,7 @@ async function buildWorkbook(){
     if(r>1504){over++;continue}
     const none=o.type===NO_OBS||!o.type;
     rows[r]={B:excelDate(v.date),C:v.area||"",D:v.site||v.area||"",E:excelTime(v.arrival),F:excelTime(v.departure),
-      G:o.type||NO_OBS,H:o.desc||"",I:none?A_NONE:(o.action||A_OBS),J:o.photos.length,
+      G:o.type||NO_OBS,H:isSurv(v)?svDesc(v):(o.desc||""),I:isSurv(v)?A_SURV:none?A_NONE:(o.action||A_OBS),J:o.photos.length,
       K:v.lat?Number(v.lat):null,L:v.lng?Number(v.lng):null,M:v.notes||""};r++}}
   const f2="xl/worksheets/sheet2.xml";zip.file(f2,patchSheet(await zip.file(f2).async("string"),rows));
   const P=reportPeriod();
@@ -885,6 +915,219 @@ async function doExport(withPhotos){
   S.busy=false;render(true);
 }
 
+/* ---------------- زيارة معاينة مزرعة (طلب حفر بئر) ---------------- */
+const SV_NUMS=[["wOk","الآبار العاملة"],["wWeak","الآبار الضعيفة"],["wBur","الآبار المردومة"],["palms","عدد النخيل"],["gh","عدد البيوت البلاستيكية"]];
+const svN=x=>{const n=parseInt(normDigits(x),10);return isFinite(n)&&n>0?n:0};
+function svFenceTxt(f){return f==="yes"?"مسوّرة":f==="no"?"غير مسوّرة":""}
+function svDesc(v){const s=v.sv||{};
+  return ["المالك: "+(s.owner||"—"),"مزرعة رقم "+(s.farmNo||"—"),s.reqNo?"طلب رقم "+s.reqNo:"","شركة الحفر: "+(s.company||"—"),svFenceTxt(s.fenced)||"السور: —",
+    "الآبار: عاملة "+svN(s.wOk)+"، ضعيفة "+svN(s.wWeak)+"، مردومة "+svN(s.wBur),"النخيل "+svN(s.palms),"البيوت البلاستيكية "+svN(s.gh)].filter(Boolean).join(" · ")}
+async function newSurvey(){
+  const now=new Date(),d=today();
+  const v={id:uid(),kind:"survey",date:d,area:suggestedArea(d),site:"",arrival:hhmm(now),departure:"",lat:"",lng:"",acc:"",
+    sv:{owner:"",farmNo:"",reqNo:"",company:"",fenced:"",wOk:0,wWeak:0,wBur:0,palms:0,gh:0},
+    obs:[{id:"sv",type:SURV,desc:"",action:A_SURV,photos:[]}],notes:"",status:"open",createdAt:Date.now(),updatedAt:Date.now()};
+  S.visits.push(v);await saveVisit(v,true);
+  S.view="visit";S.editId=v.id;S.addingSite=false;S.addingCo=false;render();
+  locate(v,true);
+}
+function svStepper(v,k,label){const val=svN(v.sv[k]);
+  return `<label class="f">${label}<div class="stepper"><button type="button" aria-label="زيادة" data-act="svStep" data-k="${k}" data-d="1">+</button>
+    <input class="inp" inputmode="numeric" data-sf="${k}" data-num="1" value="${val}" aria-label="${esc(label)}"><button type="button" aria-label="إنقاص" data-act="svStep" data-k="${k}" data-d="-1">−</button></div></label>`}
+function svCompanyField(v){const list=S.settings.companies||[];
+  if(S.addingCo)return `<div class="addline"><input class="inp" id="newCoInline" placeholder="اسم شركة الحفر" autofocus><button class="btn primary" data-act="saveCo">حفظ</button><button class="btn ghost" data-act="cancelCo">إلغاء</button></div>`;
+  return `<label class="f">الشركة اللي بتحفر البئر<select class="inp" id="coSel"><option value="">اختر الشركة</option>
+    ${list.map(c=>`<option ${c===v.sv.company?"selected":""}>${esc(c)}</option>`).join("")}${v.sv.company&&!list.includes(v.sv.company)?`<option selected>${esc(v.sv.company)}</option>`:""}
+    <option value="__new">＋ إضافة شركة…</option></select></label>`}
+function svFresh(v){return S.pdf&&S.pdf.vid===v.id&&S.pdf.ver===v.updatedAt}
+function vSurvey(v){const s=v.sv,o=v.obs[0],fresh=svFresh(v);
+  const tot=svN(s.wOk)+svN(s.wWeak)+svN(s.wBur);
+  return `<div class="sv-tag">${IC.doc}<span>زيارة معاينة مزرعة — طلب حفر بئر جديد</span></div>
+  <div class="card stack"><h3>بيانات الطلب</h3>
+    <label class="f">اسم صاحب المزرعة<input class="inp" data-sf="owner" value="${esc(s.owner)}" placeholder="الاسم الكامل"></label>
+    <div class="grid2"><label class="f">رقم المزرعة<input class="inp" data-sf="farmNo" value="${esc(s.farmNo)}" inputmode="text"></label>
+    <label class="f">رقم الطلب (اختياري)<input class="inp" data-sf="reqNo" value="${esc(s.reqNo)}"></label></div>
+    <div class="chips" role="group" aria-label="المنطقة">${areaChips(v)}</div>
+    ${siteField(v)}
+    ${svCompanyField(v)}
+  </div>
+  <div class="card stack"><h3>الزيارة</h3>
+    <label class="f">التاريخ<input class="inp" type="date" data-vf="date" value="${esc(v.date)}"></label>
+    <div class="grid2"><label class="f">وقت الوصول<input class="inp" type="time" data-vf="arrival" value="${esc(v.arrival)}"></label>
+    <label class="f">وقت المغادرة<input class="inp" type="time" data-vf="departure" value="${esc(v.departure)}"></label></div>
+    ${coordField(v)}
+  </div>
+  <div class="card stack"><h3>نتائج المعاينة</h3>
+    <div class="small muted">سور المزرعة</div>
+    <div class="seg" role="group" aria-label="سور المزرعة"><button class="y" data-act="svFence" data-v="yes" aria-pressed="${s.fenced==="yes"}">مسوّرة</button><button class="n" data-act="svFence" data-v="no" aria-pressed="${s.fenced==="no"}">غير مسوّرة</button></div>
+    <div class="small muted">الآبار القديمة في المزرعة${tot?` · المجموع <b class="num">${tot}</b>`:""}</div>
+    <div class="grid2">${SV_NUMS.slice(0,3).map(([k,l])=>svStepper(v,k,l)).join("")}</div>
+    <div class="grid2">${SV_NUMS.slice(3).map(([k,l])=>svStepper(v,k,l)).join("")}</div>
+  </div>
+  <div class="card stack"><h3>صور الآبار القديمة</h3>
+    <div class="thumbs" id="th_${o.id}">${o.photos.map(pid=>`<div class="thumb"><img alt="صورة" data-pid="${pid}"><button aria-label="حذف الصورة" data-act="rmPhoto" data-oid="${o.id}" data-pid="${pid}">×</button></div>`).join("")}</div>
+    <div class="row"><button class="btn" data-act="cam" data-oid="${o.id}">${IC.cam}تصوير</button><button class="btn" data-act="gal" data-oid="${o.id}">${IC.img}من المعرض</button></div>
+  </div>
+  <div class="card stack"><h3>ملاحظات المفتش</h3><textarea class="inp" data-vf="notes" placeholder="أي ملاحظة على الآبار أو المزرعة (اختياري)">${esc(v.notes)}</textarea>
+    <div class="hint">${IC.mic}<span>للإملاء: اضغط زر المايك في لوحة المفاتيح وتكلّم.</span></div></div>
+  <div class="card stack" id="svForm"><h3>نموذج المعاينة (PDF)</h3>
+    <div class="small">نموذج رسمي فيه بيانات الطلب ونتائج المعاينة وصور الآبار، جاهز ترسله بالإيميل للقسم المختص من الموقع.</div>
+    ${fresh?`<div class="pdf-pages">${S.pdf.previews.map((u,i)=>`<img alt="صفحة ${i+1}" src="${u}">`).join("")}</div>
+      <button class="btn primary big" data-act="svSend">${IC.mail}إرسال النموذج بالإيميل</button>
+      <button class="btn block" data-act="svSave">حفظ الملف</button>`:
+     `<button class="btn ${v.status==="open"?"":"primary "}block" data-act="svPdf" ${S.busy==="pdf"?"disabled":""}>${S.busy==="pdf"?'<span class="spin"></span> جاري تجهيز النموذج…':IC.doc+(S.pdf&&S.pdf.vid===v.id?"تحديث النموذج":"تجهيز النموذج")}</button>
+      ${v.status==="open"?'<div class="hint">'+IC.info+'<span>زر «إنهاء المعاينة» تحت يجهّز النموذج تلقائيًا.</span></div>':""}`}
+  </div>
+  <button class="btn danger block ${S.armed==="visit"?"armed":""}" data-act="delVisit">${S.armed==="visit"?"اضغط مرة ثانية لحذف المعاينة":"حذف المعاينة"}</button>`;
+}
+function svCheck(v){const s=v.sv;
+  if(!s.owner.trim()&&!s.farmNo.trim())return "اكتب اسم صاحب المزرعة أو رقم المزرعة";
+  if(!v.area)return "اختر المنطقة";
+  if(!v.site)return "اختر المحضر";
+  if(!s.fenced)return "حدد المزرعة مسوّرة أو غير مسوّرة";
+  return ""}
+
+/* --- drawing the form on A4 canvases (150 dpi) --- */
+const PG_W=1240,PG_H=1754,PG_M=80,PG_R=PG_W-PG_M;
+const PFont=(w,s,fam)=>`${w} ${s}px ${fam||'"Readex Pro"'},Tahoma,Arial,sans-serif`;
+const PC={acc:"#0E6A4E",accSoft:"#E3F0EA",ink:"#13231C",muted:"#5B6C64",line:"#BFCEC6",shade:"#F1F6F3",ok:"#0E6A4E",obs:"#A86F12",viol:"#BE3326"};
+function pgNew(){const c=document.createElement("canvas");c.width=PG_W;c.height=PG_H;const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,PG_W,PG_H);g.textBaseline="middle";return{c,g,links:[]}}
+function ptx(g,t,x,y,o){o=o||{};g.font=PFont(o.w||400,o.s||26,o.fam);g.fillStyle=o.c||PC.ink;g.textAlign=o.a||"right";
+  try{g.direction=o.ltr?"ltr":"rtl"}catch(e){}
+  let s=String(t==null?"":t);if(o.max&&g.measureText(s).width>o.max){while(s.length>1&&g.measureText(s+"…").width>o.max)s=s.slice(0,-1);s+="…"}
+  g.fillText(s,x,y);return g.measureText(s).width}
+function pbox(g,x,y,w,h,fill,stroke){if(fill){g.fillStyle=fill;g.fillRect(x,y,w,h)}if(stroke!==false){g.strokeStyle=stroke||PC.line;g.lineWidth=1.5;g.strokeRect(x+.75,y+.75,w-1.5,h-1.5)}}
+function pSection(g,y,title){g.fillStyle=PC.acc;g.fillRect(PG_M,y,PG_W-2*PG_M,52);ptx(g,title,PG_R-20,y+27,{w:600,s:27,c:"#fff"});return y+52}
+const PL=200,PRH=64;
+function pKV(g,x,y,w,label,val,o){o=o||{};pbox(g,x+w-PL,y,PL,PRH,PC.shade);pbox(g,x,y,w-PL,PRH);
+  ptx(g,label,x+w-16,y+PRH/2,{s:23,c:PC.muted,w:500,max:PL-24});
+  ptx(g,val||"—",x+w-PL-18,y+PRH/2,{s:o.s||27,w:600,c:o.c||PC.ink,ltr:o.ltr,max:w-PL-36})}
+function pRow2(g,y,a,b){const half=(PG_W-2*PG_M)/2;pKV(g,PG_M+half,y,half,a[0],a[1],a[2]);pKV(g,PG_M,y,half,b[0],b[1],b[2]);return y+PRH}
+function pRow1(g,y,label,val,o){pKV(g,PG_M,y,PG_W-2*PG_M,label,val,o);return y+PRH}
+function pCheck(g,x,y,on,label){const b=30;g.strokeStyle=PC.ink;g.lineWidth=2.5;g.strokeRect(x-b,y-b/2,b,b);
+  if(on){g.strokeStyle=PC.acc;g.lineWidth=4.5;g.beginPath();g.moveTo(x-b+6,y);g.lineTo(x-b/2-1,y+b/2-7);g.lineTo(x-5,y-b/2+5);g.stroke()}
+  return x-b-12-ptx(g,label,x-b-12,y,{s:27,w:on?700:400,c:on?PC.ink:PC.muted})}
+function pWrap(g,text,maxW,font){g.font=font;try{g.direction="rtl"}catch(e){}const out=[];
+  for(const para of String(text||"").split(/\n/)){let line="";for(const w of para.split(/\s+/).filter(Boolean)){const t=line?line+" "+w:w;if(g.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t}out.push(line)}
+  return out}
+function pFooter(g,i,n,stamp){g.strokeStyle=PC.line;g.lineWidth=1.5;g.beginPath();g.moveTo(PG_M,PG_H-72);g.lineTo(PG_R,PG_H-72);g.stroke();
+  ptx(g,"أُعدّ من «دفتر التفتيش الميداني» · "+stamp,PG_R,PG_H-44,{s:19,c:PC.muted});
+  ptx(g,"صفحة "+i+" من "+n,PG_M,PG_H-44,{s:19,c:PC.muted,a:"left"})}
+function svFormNo(v){return "MA-"+v.date.replace(/-/g,"")+"-"+(v.arrival||"0000").replace(":","")}
+async function svPages(v){
+  try{await Promise.all([document.fonts.load(PFont(400,26)),document.fonts.load(PFont(600,26)),document.fonts.load(PFont(700,26)),document.fonts.load(PFont(700,50,'"Reem Kufi"'))])}catch(e){}
+  const s=v.sv,o=v.obs[0],pics=o.photos.slice(),now=new Date();
+  const stamp=now.getFullYear()+"/"+p2(now.getMonth()+1)+"/"+p2(now.getDate())+" "+hhmm(now);
+  const nPhotoPages=Math.ceil(pics.length/4),N=1+nPhotoPages,pages=[];
+  /* page 1 */
+  const P=pgNew(),g=P.g;
+  g.fillStyle=PC.acc;g.fillRect(0,0,PG_W,132);
+  ptx(g,"هيئة البيئة – أبوظبي",PG_R,50,{w:700,s:35,c:"#fff"});
+  ptx(g,"Environment Agency – Abu Dhabi",PG_R,94,{s:21,c:"rgba(255,255,255,.85)",ltr:true});
+  g.strokeStyle="rgba(255,255,255,.9)";g.lineWidth=2;g.beginPath();g.roundRect?g.roundRect(PG_M,44,300,46,23):g.rect(PG_M,44,300,46);g.stroke();
+  ptx(g,"نموذج مقترح — نسخة تجريبية",PG_M+150,68,{s:21,w:500,c:"#fff",a:"center"});
+  ptx(g,"نموذج معاينة مزرعة",PG_W/2,198,{w:700,s:50,c:PC.acc,a:"center",fam:'"Reem Kufi","Readex Pro"'});
+  ptx(g,"لطلب حفر بئر جديد",PG_W/2,252,{s:26,c:PC.muted,a:"center"});
+  const no=svFormNo(v);
+  ptx(g,"رقم النموذج:",PG_R,304,{s:22,c:PC.muted});ptx(g,no,PG_R-140,304,{s:22,w:600,ltr:true});
+  ptx(g,"تاريخ المعاينة: "+longDate(v.date)+" "+v.date.slice(0,4),PG_M,304,{s:22,c:PC.muted,a:"left"});
+  let y=334;
+  y=pSection(g,y,"أولًا: بيانات الطلب");
+  y=pRow1(g,y,"اسم المالك",s.owner);
+  y=pRow2(g,y,["رقم المزرعة",s.farmNo],["رقم الطلب",s.reqNo]);
+  y=pRow2(g,y,["المنطقة",v.area],["المحضر",v.site]);
+  y=pRow1(g,y,"شركة الحفر",s.company);
+  y+=20;y=pSection(g,y,"ثانيًا: بيانات الزيارة");
+  y=pRow2(g,y,["التاريخ",v.date.replace(/-/g,"/")],["المفتش",S.settings.name]);
+  y=pRow2(g,y,["وقت الوصول",v.arrival],["وقت المغادرة",v.departure]);
+  const coords=v.lat&&v.lng?v.lat+", "+v.lng:"";
+  y=pRow1(g,y,"الإحداثيات",coords,{ltr:true,c:coords?"#1A5FB4":PC.ink});
+  if(coords){const url="https://maps.google.com/?q="+v.lat+","+v.lng;P.links.push({x:PG_M,y:y-PRH,w:PG_W-2*PG_M-PL,h:PRH,url});
+    ptx(g,"(اضغط للخريطة)",PG_M+18,y-PRH/2,{s:19,c:PC.muted,a:"left"})}
+  y+=20;y=pSection(g,y,"ثالثًا: نتائج المعاينة");
+  // fence
+  pbox(g,PG_R-PL,y,PL,PRH,PC.shade);pbox(g,PG_M,y,PG_W-2*PG_M-PL,PRH);ptx(g,"سور المزرعة",PG_R-16,y+PRH/2,{s:23,c:PC.muted,w:500});
+  let cx=PG_R-PL-24;cx=pCheck(g,cx,y+PRH/2,s.fenced==="yes","مسوّرة")-56;pCheck(g,cx,y+PRH/2,s.fenced==="no","غير مسوّرة");y+=PRH;
+  // wells grid
+  const cols=[["الآبار العاملة",svN(s.wOk),PC.ok],["الآبار الضعيفة",svN(s.wWeak),PC.obs],["الآبار المردومة",svN(s.wBur),PC.viol],["إجمالي الآبار القديمة",svN(s.wOk)+svN(s.wWeak)+svN(s.wBur),PC.ink]];
+  const cw=(PG_W-2*PG_M)/4;
+  cols.forEach(([l,n,c],i)=>{const x=PG_R-cw*(i+1);pbox(g,x,y,cw,56,PC.shade);ptx(g,l,x+cw/2,y+28,{s:22,c:PC.muted,w:500,a:"center"});
+    pbox(g,x,y+56,cw,82);ptx(g,n,x+cw/2,y+56+43,{s:46,w:700,c,a:"center"})});
+  y+=138;
+  y=pRow2(g,y,["عدد النخيل",String(svN(s.palms))],["البيوت البلاستيكية",String(svN(s.gh))]);
+  y=pRow1(g,y,"صور الآبار",pics.length?pics.length+(pics.length===1?" صورة":pics.length===2?" صورتان":" صور")+" مرفقة في الصفحات التالية":"لا توجد صور مرفقة");
+  y+=20;y=pSection(g,y,"رابعًا: ملاحظات المفتش");
+  const boxH=128;pbox(g,PG_M,y,PG_W-2*PG_M,boxH);
+  let fs=26,lines=pWrap(g,v.notes,PG_W-2*PG_M-40,PFont(400,fs));if(lines.length>4){fs=21;lines=pWrap(g,v.notes,PG_W-2*PG_M-40,PFont(400,fs))}
+  const maxL=Math.floor((boxH-20)/(fs*1.45));if(lines.length>maxL){lines=lines.slice(0,maxL);lines[maxL-1]+=" …"}
+  if(!String(v.notes||"").trim())ptx(g,"لا توجد ملاحظات.",PG_R-20,y+36,{s:24,c:PC.muted});
+  else lines.forEach((l,i)=>ptx(g,l,PG_R-20,y+14+fs*0.75+i*fs*1.45,{s:fs}));
+  y+=boxH+30;
+  ptx(g,"هذا النموذج يوثّق حالة المزرعة كما شوهدت وقت الزيارة، وقرار الاستحقاق يعود للقسم المختص.",PG_W/2,y,{s:20,c:PC.muted,a:"center"});
+  y+=50;
+  ptx(g,"المفتش: "+S.settings.name,PG_R,y,{s:24,w:600});ptx(g,"التوقيع: ..........................",PG_R,y+44,{s:22,c:PC.muted});
+  ptx(g,"استلام القسم المختص: ..........................",PG_M,y,{s:22,c:PC.muted,a:"left"});ptx(g,"التاريخ: ..........................",PG_M,y+44,{s:22,c:PC.muted,a:"left"});
+  if(y+44>PG_H-100)console.warn("pdf overflow",y);
+  pFooter(g,1,N,stamp);pages.push(P);
+  /* photo pages */
+  for(let pg=0;pg<nPhotoPages;pg++){const Q=pgNew(),h=Q.g;
+    h.fillStyle=PC.acc;h.fillRect(0,0,PG_W,110);
+    ptx(h,"صور الآبار القديمة",PG_R,56,{w:700,s:32,c:"#fff"});
+    ptx(h,["مزرعة رقم "+(s.farmNo||"—"),s.owner].filter(Boolean).join(" · "),PG_M,56,{s:23,c:"#fff",a:"left",max:560});
+    ptx(h,no,PG_W/2,140,{s:18,c:PC.muted,a:"center",ltr:true});
+    const cellW=(PG_W-2*PG_M-30)/2,cellH=700,top=172;
+    for(let k=0;k<4;k++){const idx=pg*4+k;if(idx>=pics.length)break;
+      const col=k%2,row=Math.floor(k/2),x=PG_R-cellW*(col+1)-30*col,yy=top+row*(cellH+40);
+      pbox(h,x,yy,cellW,cellH-54,PC.shade);
+      try{const b=await getPhotoBlob(pics[idx]);if(b){const im=await loadImage(b);const sc=Math.min((cellW-16)/im.naturalWidth,(cellH-70)/im.naturalHeight);
+        const w=im.naturalWidth*sc,hh=im.naturalHeight*sc;h.drawImage(im,x+(cellW-w)/2,yy+(cellH-54-hh)/2,w,hh)}}catch(e){}
+      const t=new Date(phTime(pics[idx]));
+      ptx(h,"صورة "+(idx+1)+" · "+hhmm(t),x+cellW/2,yy+cellH-24,{s:22,w:600,a:"center"})}
+    pFooter(h,pg+2,N,stamp);pages.push(Q)}
+  return pages}
+function pdfStr16(t){let h="FEFF";for(const ch of String(t)){const c=ch.codePointAt(0);if(c>0xFFFF){const u=c-0x10000;h+=((0xD800+(u>>10)).toString(16)+(0xDC00+(u&1023)).toString(16)).toUpperCase().padStart(8,"0")}else h+=c.toString(16).toUpperCase().padStart(4,"0")}return "<"+h+">"}
+function jpegPdf(pages,title,author){
+  const enc=new TextEncoder(),parts=[],offs=[];let len=0;
+  const add=x=>{const b=typeof x==="string"?enc.encode(x):x;parts.push(b);len+=b.length};
+  const PW=595.28,PH=841.89;let n=2;
+  const pg=pages.map(p=>({p,page:++n,cont:++n,img:++n,links:p.links.map(()=>++n)}));const info=++n;
+  const obj=(id,fn)=>{offs[id]=len;add(id+" 0 obj\n");fn();add("\nendobj\n")};
+  add(new Uint8Array([37,80,68,70,45,49,46,52,10,37,226,227,207,211,10]));
+  obj(1,()=>add("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2,()=>add(`<< /Type /Pages /Kids [${pg.map(x=>x.page+" 0 R").join(" ")}] /Count ${pg.length} >>`));
+  for(const x of pg){const sx=PW/x.p.w,sy=PH/x.p.h;
+    obj(x.page,()=>add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${x.img} 0 R >> >> /Contents ${x.cont} 0 R${x.links.length?" /Annots ["+x.links.map(l=>l+" 0 R").join(" ")+"]":""} >>`));
+    const cs=`q ${PW} 0 0 ${PH} 0 0 cm /Im0 Do Q`;
+    obj(x.cont,()=>{add(`<< /Length ${cs.length} >>\nstream\n`);add(cs);add("\nendstream")});
+    obj(x.img,()=>{add(`<< /Type /XObject /Subtype /Image /Width ${x.p.w} /Height ${x.p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${x.p.jpg.length} >>\nstream\n`);add(x.p.jpg);add("\nendstream")});
+    x.p.links.forEach((l,i)=>obj(x.links[i],()=>{const r=[l.x*sx,PH-(l.y+l.h)*sy,(l.x+l.w)*sx,PH-l.y*sy].map(z=>z.toFixed(2)).join(" ");
+      add(`<< /Type /Annot /Subtype /Link /Rect [${r}] /Border [0 0 0] /A << /S /URI /URI (${String(l.url).replace(/[()\\]/g,"\\$&")}) >> >>`)}))}
+  obj(info,()=>add(`<< /Title ${pdfStr16(title)} /Author ${pdfStr16(author)} /Producer (Daftar Tafteesh) >>`));
+  const xo=len;add(`xref\n0 ${n+1}\n0000000000 65535 f \n`);for(let i=1;i<=n;i++)add(String(offs[i]).padStart(10,"0")+" 00000 n \n");
+  add(`trailer\n<< /Size ${n+1} /Root 1 0 R /Info ${info} 0 R >>\nstartxref\n${xo}\n%%EOF\n`);
+  return new Blob(parts,{type:"application/pdf"})}
+function svFileName(v){return ("معاينة_مزرعة_"+safeName(v.sv.farmNo||v.sv.owner||v.site||"")+"_"+v.date).replace(/\s+/g,"_").replace(/_+/g,"_")+".pdf"}
+async function svMakePdf(v){
+  if(S.busy)return;S.busy="pdf";render(true);
+  try{const pages=await svPages(v);const out=[],previews=[];
+    for(const P of pages){const b=await new Promise((res,rej)=>P.c.toBlob(x=>x?res(x):rej(),"image/jpeg",0.86));
+      out.push({w:PG_W,h:PG_H,jpg:new Uint8Array(await b.arrayBuffer()),links:P.links});previews.push(URL.createObjectURL(b))}
+    if(S.pdf)S.pdf.previews.forEach(u=>URL.revokeObjectURL(u));
+    const title="نموذج معاينة مزرعة — "+[v.sv.farmNo?"رقم "+v.sv.farmNo:"",v.sv.owner].filter(Boolean).join(" · ");
+    S.pdf={vid:v.id,ver:v.updatedAt,blob:jpegPdf(out,title,S.settings.name),name:svFileName(v),previews};
+    toast("النموذج جاهز");
+  }catch(e){console.warn("pdf",e);toast("تعذر تجهيز النموذج")}
+  S.busy=false;render(true);
+  setTimeout(()=>{const f=$("#svForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},60)}
+function svMailText(v){const s=v.sv;
+  return `السلام عليكم ورحمة الله وبركاته،\n\nمرفق نموذج معاينة مزرعة لطلب حفر بئر جديد:\n- المالك: ${s.owner||"—"}\n- رقم المزرعة: ${s.farmNo||"—"}${s.reqNo?"\n- رقم الطلب: "+s.reqNo:""}\n- الموقع: ${v.area||"—"} – ${v.site||"—"}\n- تاريخ المعاينة: ${v.date.replace(/-/g,"/")}\n\nمع التحية،\n${S.settings.name}\nهيئة البيئة – أبوظبي`}
+async function svSend(v){
+  if(!svFresh(v))return svMakePdf(v);
+  const file=new File([S.pdf.blob],S.pdf.name,{type:"application/pdf"});
+  if(navigator.canShare&&navigator.share){let can=false;try{can=navigator.canShare({files:[file]})}catch(e){}
+    if(can){try{await navigator.share({files:[file],title:"نموذج معاينة مزرعة "+(v.sv.farmNo||""),text:svMailText(v)});return}catch(e){if(e&&e.name==="AbortError")return}}}
+  if(await offerFile(S.pdf.name,S.pdf.blob))toast("انحفظ النموذج. أرفقه في الإيميل")}
+
 /* ---------------- assistant (Claude via the sample capability) ---------------- */
 let SAMPLE;
 async function ai(){if(SAMPLE!==undefined)return SAMPLE;
@@ -904,12 +1147,12 @@ function noteTarget(){
   if(S.range==="month")return{sheet:"sheet4",row:63,label:"تنكتب في خانة الملاحظات بالتقرير الشهري داخل ملف الإكسل."};
   return{sheet:"sheet5",row:87,label:"تنكتب في خانة الملاحظات بالتقرير الدوري داخل ملف الإكسل."}}
 function rowsText(list,max){const out=[];
-  for(const v of sortVisits(list))for(const o of effObs(v))out.push([v.date,DAYS[parseISO(v.date).getDay()],v.area||"-",v.site||"-",o.type||NO_OBS,o.type===NO_OBS?A_NONE:(o.action||A_OBS),(o.desc||"").replace(/\s+/g," ").slice(0,160),o.photos.length+" صور"].join(" | "));
+  for(const v of sortVisits(list))for(const o of effObs(v))out.push([v.date,DAYS[parseISO(v.date).getDay()],v.area||"-",v.site||"-",o.type||NO_OBS,o.type===NO_OBS?A_NONE:(o.action||A_OBS),(isSurv(v)?svDesc(v):(o.desc||"")).replace(/\s+/g," ").slice(0,160),o.photos.length+" صور"].join(" | "));
   return out.slice(-(max||800)).join("\n")}
 function aggText(list){const m={};
   for(const v of list){const k=v.date.slice(0,7);const ob=effObs(v);
     const add=(key,x)=>{m[key]=m[key]||{v:0,o:0,x:0,n:0};m[key].v+=x.v;m[key].o+=x.o;m[key].x+=x.x;m[key].n+=x.n};
-    const st={v:1,o:0,x:0,n:0};for(const a of ob){if(a.type!==NO_OBS)st.o++;if(a.action===A_VIOL)st.x++;if(a.action===A_OBS)st.n++}
+    const st={v:1,o:0,x:0,n:0};for(const a of ob){if(a.type!==NO_OBS&&a.type!==SURV)st.o++;if(a.action===A_VIOL)st.x++;if(a.action===A_OBS)st.n++}
     add(k+" | الكل",st);add(k+" | منطقة: "+(v.area||"-"),st);
     for(const a of ob){if(a.type===NO_OBS)continue;add(k+" | نوع: "+a.type,{v:0,o:1,x:a.action===A_VIOL?1:0,n:a.action===A_OBS?1:0})}}
   return Object.keys(m).sort().map(k=>`${k} | زيارات ${m[k].v} | مشاهدات ${m[k].o} | مخالفات ${m[k].x} | دون مخالف ${m[k].n}`).join("\n")}
@@ -1381,8 +1624,20 @@ document.addEventListener("click",async e=>{
   if(S.armed&&!["wipe","delVisit","rmObs"].includes(act))S.armed=null;
   switch(act){
     case "new":return newVisit();
+    case "svNew":return newSurvey();
+    case "svFence":if(v&&v.sv){v.sv.fenced=b.dataset.v;saveVisit(v);render(true)}return;
+    case "svStep":if(v&&v.sv){const k=b.dataset.k;v.sv[k]=Math.max(0,svN(v.sv[k])+(+b.dataset.d));saveVisit(v);render(true)}return;
+    case "saveCo":{const n=(($("#newCoInline")||{}).value||"").trim();if(!n||!v)return toast("اكتب اسم الشركة");
+      S.settings.companies=S.settings.companies||[];if(!S.settings.companies.includes(n)){S.settings.companies.push(n);await saveSettings()}
+      v.sv.company=n;S.addingCo=false;saveVisit(v);toast("أضيفت «"+n+"»");return render(true)}
+    case "cancelCo":S.addingCo=false;return render(true);
+    case "svPdf":if(v&&isSurv(v))return svMakePdf(v);return;
+    case "svSend":if(v&&isSurv(v))return svSend(v);return;
+    case "svSave":if(v&&isSurv(v)&&svFresh(v)){if(await offerFile(S.pdf.name,S.pdf.blob))toast("انحفظ النموذج")}return;
+    case "addCo":{const n=(($("#newCo")||{}).value||"").trim();if(!n)return;S.settings.companies=S.settings.companies||[];if(!S.settings.companies.includes(n))S.settings.companies.push(n);await saveSettings();return render(true)}
+    case "rmCo":S.settings.companies.splice(+b.dataset.i,1);await saveSettings();return render(true);
     case "va":return vaStart();
-    case "edit":S.view="visit";S.editId=b.dataset.id;S.addingSite=false;S.addingType=null;S.armed=null;return render();
+    case "edit":S.view="visit";S.editId=b.dataset.id;S.addingSite=false;S.addingCo=false;S.addingType=null;S.armed=null;return render();
     case "back":S.view="today";S.editId=null;S.armed=null;return render();
     case "area":if(!v)return;v.area=b.dataset.v;if(!(S.settings.areas[v.area]||[]).includes(v.site))v.site="";S.addingSite=false;saveVisit(v);return render(true);
     case "saveSite":{const inp=$("#newSite");const n=(inp&&inp.value||"").trim();if(!n||!v)return toast("اكتب اسم الموقع");
@@ -1409,7 +1664,9 @@ document.addEventListener("click",async e=>{
     case "rmPhoto":{if(!v)return;const o=v.obs.find(x=>x.id===b.dataset.oid);if(!o)return;o.photos=o.photos.filter(p=>p!==b.dataset.pid);
       await delPhoto(b.dataset.pid);saveVisit(v);return render(true)}
     case "mic":return dictate(b.dataset.oid,b);
-    case "finish":{if(!v)return;if(!v.area||!v.site)return toast("اختر المنطقة والموقع قبل الإنهاء");
+    case "finish":{if(!v)return;
+      if(isSurv(v)){const m=svCheck(v);if(m)return toast(m);if(!v.departure)v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);toast("انحفظت المعاينة");return svMakePdf(v)}
+      if(!v.area||!v.site)return toast("اختر المنطقة والموقع قبل الإنهاء");
       if(v.obs.some(o=>!o.type))return toast("حدد نوع كل مشاهدة، أو احذف الفاضية");
       if(!v.departure)v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);
       S.view="today";S.editId=null;toast("تم حفظ الزيارة");return render()}
@@ -1449,6 +1706,7 @@ document.addEventListener("input",e=>{
   if(t.id==="repNote"){setNote(t.value);return}
   if(t.id==="coordPaste"&&v){const c=parseCoords(t.value);if(c){v.lat=c[0];v.lng=c[1];v.acc="";saveVisit(v);render(true);toast("تم حفظ الإحداثيات")}return}
   if(!v)return;
+  if(t.dataset.sf&&v.sv){v.sv[t.dataset.sf]=t.dataset.num?normDigits(t.value).replace(/\D/g,""):t.value;saveVisit(v);return}
   if(t.dataset.vf){if(t.dataset.vf==="date"&&!t.value)return;v[t.dataset.vf]=t.value;saveVisit(v);if(t.dataset.vf==="date"){renderTop();}return}
   if(t.dataset.of==="desc"){const o=v.obs.find(x=>x.id===t.dataset.oid);if(o){o.desc=t.value;saveVisit(v)}}
 });
@@ -1456,6 +1714,8 @@ document.addEventListener("change",e=>{
   const t=e.target,v=visit(S.editId);
   if(t.id==="rFrom"){S.from=t.value;return render(true)}
   if(t.id==="rTo"){S.to=t.value;return render(true)}
+  if(t.id==="coSel"&&v&&v.sv){if(t.value==="__new"){S.addingCo=true;return render(true)}v.sv.company=t.value;saveVisit(v);return}
+  if(t.dataset.sf&&t.dataset.num&&v&&v.sv)return render(true);
   if(t.id==="siteSel"&&v){if(t.value==="__new"){S.addingSite=true;return render(true)}v.site=t.value;saveVisit(v);return}
   if(t.dataset.of==="type"&&v){const o=v.obs.find(x=>x.id===t.dataset.oid);if(!o)return;
     if(t.value==="__new"){S.addingType=o.id;return render(true)}o.type=t.value;saveVisit(v);return render(true)}
@@ -1468,6 +1728,8 @@ document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const t=e.targ
   if(t.id==="newTypeInline"){e.preventDefault();document.querySelector('[data-act="saveTypeInline"]').click()}
   if(t.dataset&&t.dataset.addsite){e.preventDefault();t.nextElementSibling.click()}
   if(t.id==="newArea"){e.preventDefault();document.querySelector('[data-act="addArea"]').click()}
+  if(t.id==="newCoInline"){e.preventDefault();document.querySelector('[data-act="saveCo"]').click()}
+  if(t.id==="newCo"){e.preventDefault();document.querySelector('[data-act="addCo"]').click()}
   if(t.id==="newType"){e.preventDefault();document.querySelector('[data-act="addType"]').click()}
   if(t.id==="aiQ"&&!e.shiftKey){e.preventDefault();document.querySelector('[data-act="ask"]').click()}
 });
@@ -1476,7 +1738,7 @@ document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const t=e.targ
 (async function boot(){
   S.settings=defaults();render();
   const ok=await DB.open();if(!ok)S.storageWarn=true;
-  try{const st=await DB.get("kv","settings");if(st&&st.areas)S.settings=st}catch(e){}
+  try{const st=await DB.get("kv","settings");if(st&&st.areas)S.settings=fixSettings(st)}catch(e){}
   try{S.visits=(await DB.all("visits"))||[]}catch(e){S.visits=[]}
   try{S.lastExport=(await DB.get("kv","lastExport"))||null}catch(e){}
   try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
@@ -1485,7 +1747,7 @@ document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const t=e.targ
   const cloud=await Cloud.init();S.cloudChecked=true;
   if(cloud){
     try{const a=await Cloud.app.get();
-      if(a.exists){const d=a.data();if(d.settings&&d.settings.areas)S.settings=JSON.parse(JSON.stringify(d.settings));if(d.lastExport)S.lastExport=d.lastExport;DB.put("kv",S.settings,"settings").catch(()=>{})}
+      if(a.exists){const d=a.data();if(d.settings&&d.settings.areas)S.settings=fixSettings(JSON.parse(JSON.stringify(d.settings)));if(d.lastExport)S.lastExport=d.lastExport;DB.put("kv",S.settings,"settings").catch(()=>{})}
       else pushApp()}catch(e){}
     try{const snap=await Cloud.col.get();const remote=new Map();snap.docs.forEach(d=>{if(d.exists)remote.set(d.id,JSON.parse(JSON.stringify(d.data())))});
       const merged=new Map(remote);

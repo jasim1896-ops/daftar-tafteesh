@@ -77,6 +77,12 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 - Visits get `src:"voice"` (shows the «صوتي» pill). Same data model, Excel export unchanged.
 - **Unverified on a real iPhone:** whether iOS lets the mic restart after speech without a tap, and whether speech recognition works while the camera is open. Fallbacks exist (tap «تكلّم», tap the preview, «خلاص، كمّل»). Ask him how it behaved.
 
+## «زيارة معاينة مزرعة» — farm survey for well-drilling requests (built 2026-11-02, waiting for his field test)
+- Button «زيارة معاينة مزرعة (طلب حفر بئر)» on اليوم. Visit with `kind:"survey"` and `sv:{owner,farmNo,reqNo,company,fenced:"yes"|"no",wOk,wWeak,wBur,palms,gh}`; photos live in one obs `{id:"sv",type:"معاينة مزرعة",action:"معاينة"}` so sync/export/photo code is shared. Editor `vSurvey`, check `svCheck` (owner or farm no., area, محضر, fence).
+- He does **not** decide eligibility; the form only records facts. Drilling companies are in `settings.companies` (editable in الإعدادات).
+- «إنهاء المعاينة» builds a PDF form (`svPages` draws A4 canvases, `jpegPdf` wraps the JPEGs, Google Maps link annotation on the coordinates), then «إرسال النموذج بالإيميل» uses `navigator.share` (Mail) with fallback `offerFile`. The form is a **proposal** to replace the paper form; if management keeps the old paper form, rebuild `svPages` to match it.
+- Excel: survey row type «معاينة مزرعة», action «معاينة», description = `svDesc`. It counts as a visit; the observation flag (col V) excludes it.
+
 ## Testing
 - Voice flow: Playwright with a mocked `webkitSpeechRecognition` (scripted answers queue) and `speechSynthesis`, Chromium flags `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; route the cdnjs JSZip URL to a local copy (cdnjs is blocked in the cloud sandbox).
 - `node --check` on the extracted `<script>`, then a Playwright run (Chromium) through a visit, photo, export, and reload.
