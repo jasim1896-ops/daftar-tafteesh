@@ -17,7 +17,7 @@ Working days **Monday–Friday** (Saturday/Sunday off), roughly 07:00–15:00; F
 |---|---|
 | Monday, Wednesday | ليوا (one or two محاضر per visit) / المرفأ / الرويس / غياثي / sometimes السلع |
 | Tuesday, Thursday | حبشان (East or West, alternating) |
-| Friday | بدع زايد |
+| Friday | مدينة زايد |
 
 Each visit: area, site (محضر), date, arrival/departure time, GPS coordinates, observations with photos.
 - If a violation is observed **and the offender is present** → «تم تحرير مخالفة».

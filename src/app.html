@@ -252,11 +252,11 @@ const DEFAULT_COMPANIES=["شركة العيون لحفر الآبار","شركة
 const DEFAULT_AREAS={
   "ليوا":["الثروانية","الجبانة","مزيرعة","حميم","بوعوانة","اليارية","موقب","الخيس","نشاش","وذين","اليبانة","يرّة","موصل","قرمدة","نفير","الرايقة","المارية","المارية الغربية","عتاب","خنّور","الحميضي","الصبخة","حفيف","قطوف","الهيلة","عرادة","ملقطة","العيد","أم القرين","العاطر","الهذي","المشرب","مهدر بن عصيان"],
   "حبشان":["حبشان الشرقية","حبشان الغربية"],
-  "الرويس":["الرويس"],"المرفأ":["المرفأ","الطريف"],"غياثي":["غياثي"],"السلع":["السلع"],"بدع زايد":["بدع زايد"]
+  "الرويس":["الرويس"],"المرفأ":["المرفأ","الطريف"],"غياثي":["غياثي"],"السلع":["السلع"],"مدينة زايد":["مدينة زايد"]
 };
 const DEFAULT_TYPES=["حرق مخلفات","تحميل مياه جوفية في صهاريج","تصريف / كب صرف صحي","رمي نفايات عامة","تسرب زيوت أو مواد كيميائية","حفر آبار غير مصرح"];
 const COAST=["ليوا","المرفأ","الرويس","غياثي","السلع"];
-const SCHEDULE={1:{t:"ليوا / المرفأ / الرويس / غياثي / السلع",a:COAST},2:{t:"حبشان (شرق أو غرب)",a:["حبشان"]},3:{t:"ليوا / المرفأ / الرويس / غياثي / السلع",a:COAST},4:{t:"حبشان (شرق أو غرب)",a:["حبشان"]},5:{t:"بدع زايد — نصف دوام",a:["بدع زايد"]}};
+const SCHEDULE={1:{t:"ليوا / المرفأ / الرويس / غياثي / السلع",a:COAST},2:{t:"حبشان (شرق أو غرب)",a:["حبشان"]},3:{t:"ليوا / المرفأ / الرويس / غياثي / السلع",a:COAST},4:{t:"حبشان (شرق أو غرب)",a:["حبشان"]},5:{t:"مدينة زايد — نصف دوام",a:["مدينة زايد"]}};
 const DAYS=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const IC={
@@ -364,7 +364,15 @@ window.addEventListener("online",()=>syncPending());
 setInterval(()=>{if(S.dirty.size||S.pendingPhotos||S.appDirty)syncPending()},45000);
 
 function defaults(){return{name:"جاسم الحمادي",areas:JSON.parse(JSON.stringify(DEFAULT_AREAS)),types:DEFAULT_TYPES.slice(),companies:DEFAULT_COMPANIES.slice()}}
-function fixSettings(st){if(!Array.isArray(st.companies))st.companies=DEFAULT_COMPANIES.slice();return st}
+function fixSettings(st){if(!Array.isArray(st.companies))st.companies=DEFAULT_COMPANIES.slice();
+  /* 2026-11: «بدع زايد» renamed «مدينة زايد» */
+  const OLD="بدع زايد",NEW="مدينة زايد";
+  if(st.areas&&st.areas[OLD]){const sites=st.areas[OLD].map(x=>x===OLD?NEW:x);const out={};
+    for(const k of Object.keys(st.areas)){if(k===OLD){if(!out[NEW])out[NEW]=[];for(const x of sites)if(!out[NEW].includes(x))out[NEW].push(x)}
+      else if(k===NEW){out[NEW]=out[NEW]||[];for(const x of st.areas[k])if(!out[NEW].includes(x))out[NEW].push(x)}else out[k]=st.areas[k]}
+    st.areas=out}
+  return st}
+function fixVisits(){for(const v of S.visits){let ch=false;if(v.area==="بدع زايد"){v.area="مدينة زايد";ch=true}if(v.site==="بدع زايد"){v.site="مدينة زايد";ch=true}if(ch)saveVisit(v,true)}}
 async function saveSettings(){try{await DB.put("kv",S.settings,"settings")}catch(e){}pushApp()}
 const saveTimers=new Map();
 function saveVisit(v,now){v.updatedAt=Date.now();const go=()=>DB.put("visits",v).catch(()=>{}).then(()=>pushVisit(v)).then(syncState);
@@ -916,6 +924,7 @@ async function doExport(withPhotos){
 }
 
 /* ---------------- زيارة معاينة مزرعة (طلب حفر بئر) ---------------- */
+const AREA_ALIAS={"مدينة زايد":["بدع زايد","المدينة"]};
 const SV_NUMS=[["wOk","الآبار العاملة"],["wWeak","الآبار الضعيفة"],["wBur","الآبار المردومة"],["palms","عدد النخيل"],["gh","عدد البيوت البلاستيكية"]];
 const svN=x=>{const n=parseInt(normDigits(x),10);return isFinite(n)&&n>0?n:0};
 function svFenceTxt(f){return f==="yes"?"مسوّرة":f==="no"?"غير مسوّرة":""}
@@ -1160,7 +1169,7 @@ function assistRules(){
   return `أنت المساعد الشخصي للمفتش البيئي ${S.settings.name} في هيئة البيئة، منطقة الظفرة. جاوب بالعربي بلهجة خليجية مهذبة ومختصرة (جمل قليلة)، إلا إذا طلب نص رسمي فاكتبه بالفصحى.
 اعتمد فقط على بيانات الزيارات تحت. إذا السؤال يحتاج معلومة غير موجودة قل ذلك بوضوح ولا تخمّن. للأرقام اعتمد على جدول الإحصاءات الجاهز.
 تاريخ اليوم ${today()} (${DAYS[new Date().getDay()]}). الأسبوع يبدأ الاثنين. الزيارة = سجل زيارة لموقع. المشاهدة = أي نوع غير «${NO_OBS}». المخالفة = الإجراء «${A_VIOL}».
-جدول المفتش المعتاد: الاثنين والأربعاء ليوا والمرفأ والرويس وغياثي والسلع، الثلاثاء والخميس حبشان، الجمعة بدع زايد.
+جدول المفتش المعتاد: الاثنين والأربعاء ليوا والمرفأ والرويس وغياثي والسلع، الثلاثاء والخميس حبشان، الجمعة مدينة زايد.
 
 الإحصاءات الشهرية الجاهزة (شهر | فئة | أرقام):
 ${aggText(S.visits)||"لا توجد زيارات بعد"}
@@ -1303,7 +1312,7 @@ const DRIVE_PROMPT=`أنت «مساعد القيادة» للمفتش البيئ
 الإجراء: تم تحرير مخالفة أو مشاهدة فقط
 الملاحظات: ...
 اكتب الوقت الفعلي اللي قلت فيه الكلام إذا تعرفه، وإلا تاريخ اليوم والوقت التقريبي.
-المناطق المعتادة: ليوا (المحاضر مثل الثروانية والجبانة ومزيرعة)، حبشان الشرقية والغربية، الرويس، المرفأ، غياثي، السلع، بدع زايد.`;
+المناطق المعتادة: ليوا (المحاضر مثل الثروانية والجبانة ومزيرعة)، حبشان الشرقية والغربية، الرويس، المرفأ، غياثي، السلع، مدينة زايد.`;
 function driveHelp(){const txt=DRIVE_PROMPT.replace("${NAME}",S.settings.name);
   return `<div class="siri-help">
 <p>مساعد صوتي داخل تطبيق Claude نفسه، تكلمه بوضع الصوت وأنت سايق (على CarPlay أو الجوال على الحامل). يسألك سؤال سؤال، وفي الأخير يجهّز لك نص تلصقه في التطبيق.</p>
@@ -1472,7 +1481,7 @@ function vaHandle(alts){
   switch(VA.step){
     case "area":{
       const areas=Object.keys(st.areas),sites=[];for(const a of areas)for(const s of st.areas[a])if(!sites.some(x=>x.s===s))sites.push({a,s});
-      const am=bestMatch(alts,areas),sm=bestMatch(alts,sites.map(x=>x.s),s=>[s.replace(sites.find(x=>x.s===s).a,"").trim()].filter(Boolean));
+      const am=bestMatch(alts,areas,a=>AREA_ALIAS[a]||[]),sm=bestMatch(alts,sites.map(x=>x.s),s=>[s.replace(sites.find(x=>x.s===s).a,"").trim()].filter(Boolean));
       if(sm.score===1&&sm.score>=am.score&&!areas.includes(sm.value)){const a=sites.find(x=>x.s===sm.value).a;vaSetArea(v,a);v.site=sm.value;saveVisit(v);return vaGo("hasObs",a+"، "+sm.value+".")}
       const place=()=>v.site&&v.site!==v.area?v.area+"، "+v.site+".":v.area+".";
       if(am.sure){vaSetArea(v,am.value);return vaGo(v.site?"hasObs":"site",place())}
@@ -1738,8 +1747,9 @@ document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const t=e.targ
 (async function boot(){
   S.settings=defaults();render();
   const ok=await DB.open();if(!ok)S.storageWarn=true;
-  try{const st=await DB.get("kv","settings");if(st&&st.areas)S.settings=fixSettings(st)}catch(e){}
+  let st0="";try{const st=await DB.get("kv","settings");if(st&&st.areas){st0=JSON.stringify(st.areas);S.settings=fixSettings(st)}}catch(e){}
   try{S.visits=(await DB.all("visits"))||[]}catch(e){S.visits=[]}
+  fixVisits();if(S.settings.areas&&!S.settings.areas["بدع زايد"]&&st0!==JSON.stringify(S.settings.areas))saveSettings();
   try{S.lastExport=(await DB.get("kv","lastExport"))||null}catch(e){}
   try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
   render(true);
@@ -1747,12 +1757,12 @@ document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const t=e.targ
   const cloud=await Cloud.init();S.cloudChecked=true;
   if(cloud){
     try{const a=await Cloud.app.get();
-      if(a.exists){const d=a.data();if(d.settings&&d.settings.areas)S.settings=fixSettings(JSON.parse(JSON.stringify(d.settings)));if(d.lastExport)S.lastExport=d.lastExport;DB.put("kv",S.settings,"settings").catch(()=>{})}
+      if(a.exists){const d=a.data();if(d.settings&&d.settings.areas){const was=JSON.stringify(d.settings.areas);S.settings=fixSettings(JSON.parse(JSON.stringify(d.settings)));if(was!==JSON.stringify(S.settings.areas))pushApp()}if(d.lastExport)S.lastExport=d.lastExport;DB.put("kv",S.settings,"settings").catch(()=>{})}
       else pushApp()}catch(e){}
     try{const snap=await Cloud.col.get();const remote=new Map();snap.docs.forEach(d=>{if(d.exists)remote.set(d.id,JSON.parse(JSON.stringify(d.data())))});
       const merged=new Map(remote);
       for(const v of S.visits){const r=remote.get(v.id);if(!r||(v.updatedAt||0)>(r.updatedAt||0)){merged.set(v.id,v);S.dirty.add(v.id)}}
-      S.visits=[...merged.values()];
+      S.visits=[...merged.values()];fixVisits();
       for(const v of S.visits)DB.put("visits",v).catch(()=>{});
     }catch(e){}
     syncPending();
