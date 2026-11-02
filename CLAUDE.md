@@ -83,6 +83,10 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 - «إنهاء المعاينة» builds a PDF form (`svPages` draws A4 canvases, `jpegPdf` wraps the JPEGs, Google Maps link annotation on the coordinates), then «إرسال النموذج بالإيميل» uses `navigator.share` (Mail) with fallback `offerFile`. The form is a **proposal** to replace the paper form; if management keeps the old paper form, rebuild `svPages` to match it.
 - Excel: survey row type «معاينة مزرعة», action «معاينة», description = `svDesc`. It counts as a visit; the observation flag (col V) excludes it.
 
+## Tutorial video (مقطع الشرح)
+- v2 (2026-11-02, 4:40): https://d2ol7oe51mr4n9.cloudfront.net/user_3KxcXNsGX1h7cj6wUkRO8K9aqTQ/f9f09cad-5cdf-469a-9193-2424e142a8c0.mp4 (v1 4:00 had «بدع زايد» and no survey).
+- Built in the Higgsfield sandbox: Playwright captures of the live GitHub Pages app (fake speech + fake camera), scenes drawn from an HTML template (Reem Kufi titles, Readex Pro text, chapter chips), Excel views rendered from the real export, crossfades, original narration reused + new «المعاينة» chapter. Narrator voice = ElevenLabs preset Harrison (573e5163-59b3-4926-aab1-951ef2985f81). If the app UI changes, recapture and re-render the same way.
+
 ## Testing
 - Voice flow: Playwright with a mocked `webkitSpeechRecognition` (scripted answers queue) and `speechSynthesis`, Chromium flags `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`; route the cdnjs JSZip URL to a local copy (cdnjs is blocked in the cloud sandbox).
 - `node --check` on the extracted `<script>`, then a Playwright run (Chromium) through a visit, photo, export, and reload.
