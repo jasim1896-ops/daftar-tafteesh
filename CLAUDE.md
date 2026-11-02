@@ -43,6 +43,7 @@ Sheets: طريقة الاستخدام · سجل الزيارات · التقري
 - Notes cells: weekly B77, monthly B63, periodic B87.
 - Photos are **not** embedded: they live in a `الصور/` folder next to the workbook, one sub-folder per visit `YYYY-MM-DD_<site>`. Column P links to it.
 - Verify with LibreOffice after any change (zero formula errors).
+- The exported workbook carries **calculated values** for every formula (`fillCachedValues` in `src/app.html`, a small formula engine for the functions the template uses). Without them the iPhone Files preview and mobile mail previews show 0 and 1899/12/31, because they never recalculate. If you add a formula function to the template, add it to the engine and re-run the LibreOffice comparison (all formula cells must match except TODAY()).
 
 ### `src/app.html` → the phone app (single file, vanilla JS, RTL)
 Tabs: اليوم · السجل · التصدير · المساعد · الإعدادات.
