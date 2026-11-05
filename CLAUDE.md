@@ -81,7 +81,7 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 - Button «زيارة معاينة مزرعة (طلب حفر بئر)» on اليوم. Visit with `kind:"survey"` and `sv:{owner,farmNo,reqNo,company,fenced:"yes"|"no",wOk,wWeak,wBur,palms,gh}`; photos live in one obs `{id:"sv",type:"معاينة مزرعة",action:"معاينة"}` so sync/export/photo code is shared. Editor `vSurvey`, check `svCheck` (owner or farm no., area, محضر, fence).
 - He does **not** decide eligibility; the form only records facts. Drilling companies are in `settings.companies` (editable in الإعدادات).
 - «إنهاء المعاينة» builds a PDF form (`svPages` draws A4 canvases, `jpegPdf` wraps the JPEGs, Google Maps link annotation on the coordinates), then «إرسال النموذج بالإيميل» uses `navigator.share` (Mail) with fallback `offerFile`. The form is a **proposal** to replace the paper form; if management keeps the old paper form, rebuild `svPages` to match it.
-- Excel: survey row type «معاينة مزرعة», action «معاينة», description = `svDesc`. It counts as a visit; the observation flag (col V) excludes it.
+- Excel: survey row type «معاينة مزرعة», action «معاينة», description = `svDesc`. It counts as a visit; the observation flag (col V) excludes it. Each report (weekly, monthly, periodic) has a KPI card «معاينات المزارع» (COUNTIFS on type «معاينة مزرعة») so the visit total reconciles (added 2026-11-05).
 
 ## Tutorial video (مقطع الشرح)
 - v2 (2026-11-02, 4:40): https://d2ol7oe51mr4n9.cloudfront.net/user_3KxcXNsGX1h7cj6wUkRO8K9aqTQ/f9f09cad-5cdf-469a-9193-2424e142a8c0.mp4 (v1 4:00 had «بدع زايد» and no survey).

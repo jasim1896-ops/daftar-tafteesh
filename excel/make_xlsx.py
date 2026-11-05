@@ -329,6 +329,7 @@ def signature(ws, row):
     ws.row_dimensions[row].height = 30
 
 C_V, C_O, C_X, C_A, C_OK = "1E5B3C", "C77700", "B3261E", "8A5A00", "2E6E8E"
+C_SV = "5B4A8A"  # farm surveys (معاينات)
 
 # ------------------------------------------------------------------ weekly
 ws = ws_w
@@ -350,8 +351,9 @@ kpis(ws, 8, [
     (("B", "C"), "الزيارات", "=SUMIFS(L_NewVisit,L_Week,WkStart)", C_V),
     (("D", "D"), "المشاهدات البيئية", "=SUMIFS(L_Obs,L_Week,WkStart)", C_O),
     (("E", "E"), "المخالفات المحررة", "=SUMIFS(L_Viol,L_Week,WkStart)", C_X),
-    (("F", "G"), "مشاهدات دون مخالف", '=COUNTIFS(L_Week,WkStart,L_Act,"مشاهدة فقط")', C_A),
-    (("H", "I"), "زيارات بلا مشاهدات", '=COUNTIFS(L_Week,WkStart,L_Type,"لا توجد مشاهدات")', C_OK),
+    (("F", "F"), "مشاهدات دون مخالف", '=COUNTIFS(L_Week,WkStart,L_Act,"مشاهدة فقط")', C_A),
+    (("G", "G"), "زيارات بلا مشاهدات", '=COUNTIFS(L_Week,WkStart,L_Type,"لا توجد مشاهدات")', C_OK),
+    (("H", "I"), "معاينات المزارع", '=COUNTIFS(L_Week,WkStart,L_Type,"معاينة مزرعة")', C_SV),
 ])
 
 section(ws, "B11:I11", "ملخص أيام الأسبوع")
@@ -447,8 +449,9 @@ kpis(ws, 8, [
     (("B", "C"), "الزيارات", f"=SUMIFS(L_NewVisit,{MC})", C_V),
     (("D", "D"), "المشاهدات البيئية", f"=SUMIFS(L_Obs,{MC})", C_O),
     (("E", "E"), "المخالفات المحررة", f"=SUMIFS(L_Viol,{MC})", C_X),
-    (("F", "G"), "مشاهدات دون مخالف", f'=COUNTIFS({MC},L_Act,"مشاهدة فقط")', C_A),
-    (("H", "I"), "زيارات بلا مشاهدات", f'=COUNTIFS({MC},L_Type,"لا توجد مشاهدات")', C_OK),
+    (("F", "F"), "مشاهدات دون مخالف", f'=COUNTIFS({MC},L_Act,"مشاهدة فقط")', C_A),
+    (("G", "G"), "زيارات بلا مشاهدات", f'=COUNTIFS({MC},L_Type,"لا توجد مشاهدات")', C_OK),
+    (("H", "I"), "معاينات المزارع", f'=COUNTIFS({MC},L_Type,"معاينة مزرعة")', C_SV),
 ])
 
 def area_table(ws, top, sum_crit):
@@ -529,8 +532,9 @@ kpis(ws, 8, [
     (("B", "C"), "الزيارات", f"=SUMIFS(L_NewVisit,{PC})", C_V),
     (("D", "D"), "المشاهدات البيئية", f"=SUMIFS(L_Obs,{PC})", C_O),
     (("E", "E"), "المخالفات المحررة", f"=SUMIFS(L_Viol,{PC})", C_X),
-    (("F", "G"), "مشاهدات دون مخالف", f'=COUNTIFS({PC},L_Act,"مشاهدة فقط")', C_A),
-    (("H", "I"), "زيارات بلا مشاهدات", f'=COUNTIFS({PC},L_Type,"لا توجد مشاهدات")', C_OK),
+    (("F", "F"), "مشاهدات دون مخالف", f'=COUNTIFS({PC},L_Act,"مشاهدة فقط")', C_A),
+    (("G", "G"), "زيارات بلا مشاهدات", f'=COUNTIFS({PC},L_Type,"لا توجد مشاهدات")', C_OK),
+    (("H", "I"), "معاينات المزارع", f'=COUNTIFS({PC},L_Type,"معاينة مزرعة")', C_SV),
 ])
 section(ws, "B11:I11", "حسب الشهر")
 header_row(ws, 12, [("B", "الشهر"), ("D", "الزيارات"), ("E", "المشاهدات البيئية"), ("F", "مخالفات محررة"),
