@@ -255,8 +255,6 @@ const DEFAULT_AREAS={
   "الرويس":["الرويس"],"المرفأ":["المرفأ","الطريف"],"غياثي":["غياثي"],"السلع":["السلع"],"مدينة زايد":["مدينة زايد"]
 };
 const DEFAULT_TYPES=["حرق مخلفات","تحميل مياه جوفية في صهاريج","تصريف / كب صرف صحي","رمي نفايات عامة","تسرب زيوت أو مواد كيميائية","حفر آبار غير مصرح"];
-const COAST=["ليوا","المرفأ","الرويس","غياثي","السلع"];
-const SCHEDULE={1:{t:"ليوا / المرفأ / الرويس / غياثي / السلع",a:COAST},2:{t:"حبشان (شرق أو غرب)",a:["حبشان"]},3:{t:"ليوا / المرفأ / الرويس / غياثي / السلع",a:COAST},4:{t:"حبشان (شرق أو غرب)",a:["حبشان"]},5:{t:"مدينة زايد — نصف دوام",a:["مدينة زايد"]}};
 const DAYS=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const IC={
@@ -412,7 +410,7 @@ function statTiles(s,label){return `<div class="stats" aria-label="${esc(label)}
 
 /* ---------------- views ---------------- */
 function vToday(){
-  const d=today(),wd=new Date().getDay(),sch=SCHEDULE[wd];
+  const d=today();
   const open=S.visits.filter(v=>v.status==="open");
   const todays=sortVisits(S.visits.filter(v=>v.date===d));
   const ws=weekStart(d),we=addDays(ws,6);
@@ -420,8 +418,7 @@ function vToday(){
   return `
   ${S.cloudChecked&&!Cloud.ok?'<div class="banner">الحفظ السحابي غير متاح الحين، والبيانات محفوظة على هذا الجهاز فقط. صدّر ملف التقارير نهاية كل يوم حتى ما تضيع.</div>':""}
   ${Cloud.ok&&(S.dirty.size||S.pendingPhotos)?'<div class="banner">في تغييرات أو صور بانتظار الإنترنت، وبترتفع تلقائيًا أول ما ترجع التغطية.</div>':""}
-  <section class="day"><div class="day-date">${esc(longDate(d))}</div>
-    <div class="sched">${sch?`<span class="pill acc">جدول اليوم</span><span>${esc(sch.t)}</span>`:'<span class="pill ok">عطلة نهاية الأسبوع</span>'}</div></section>
+  <section class="day"><div class="day-date">${esc(longDate(d))}</div></section>
   ${open.map(v=>`<div class="live-card"><div><b>${isSurv(v)?"معاينة جارية":"زيارة جارية"}: ${esc(v.area)} · ${esc(v.site||"بدون موقع")}</b><span class="small muted">منذ ${esc(v.arrival||"")} — ${esc(shortDate(v.date))}</span></div><button class="btn primary" data-act="edit" data-id="${v.id}">متابعة</button></div>`).join("")}
   ${vaSupported()&&!S.speechBlocked?`<button class="btn big va-go" data-act="va">${IC.mic}المساعد الآلي — زيارة بالصوت</button>`:""}
   <button class="btn primary big" data-act="new">${IC.plus}بدء زيارة جديدة</button>
@@ -513,8 +510,8 @@ function vSettings(){
 }
 
 /* ---------------- visit editor ---------------- */
-function areaChips(v){const sug=(SCHEDULE[parseISO(v.date).getDay()]||{a:[]}).a;
-  return Object.keys(S.settings.areas).map(a=>`<button class="chip ${sug.includes(a)?"sug":""}" data-act="area" data-v="${esc(a)}" aria-pressed="${v.area===a}">${esc(a)}</button>`).join("")}
+function areaChips(v){
+  return Object.keys(S.settings.areas).map(a=>`<button class="chip" data-act="area" data-v="${esc(a)}" aria-pressed="${v.area===a}">${esc(a)}</button>`).join("")}
 function siteField(v){const list=S.settings.areas[v.area]||[];
   if(S.addingSite)return `<div class="addline"><input class="inp" id="newSite" placeholder="اسم الموقع الجديد في ${esc(v.area)}" autofocus><button class="btn primary" data-act="saveSite">حفظ</button><button class="btn ghost" data-act="cancelSite">إلغاء</button></div>`;
   return `<label class="f">الموقع / المحضر<select class="inp" id="siteSel" ${v.area?"":"disabled"}>
@@ -590,10 +587,9 @@ function render(keepScroll){
 }
 
 /* ---------------- actions ---------------- */
-function suggestedArea(dateStr){const s=SCHEDULE[parseISO(dateStr).getDay()];return s?s.a[0]:""}
 async function newVisit(){
   const now=new Date(),d=today();
-  const v={id:uid(),date:d,area:suggestedArea(d),site:"",arrival:hhmm(now),departure:"",lat:"",lng:"",acc:"",obs:[],notes:"",status:"open",createdAt:Date.now(),updatedAt:Date.now()};
+  const v={id:uid(),date:d,area:"",site:"",arrival:hhmm(now),departure:"",lat:"",lng:"",acc:"",obs:[],notes:"",status:"open",createdAt:Date.now(),updatedAt:Date.now()};
   S.visits.push(v);await saveVisit(v,true);
   S.view="visit";S.editId=v.id;S.addingSite=false;render();
   locate(v,true);
@@ -933,7 +929,7 @@ function svDesc(v){const s=v.sv||{};
     "الآبار: عاملة "+svN(s.wOk)+"، ضعيفة "+svN(s.wWeak)+"، مردومة "+svN(s.wBur),"النخيل "+svN(s.palms),"البيوت البلاستيكية "+svN(s.gh)].filter(Boolean).join(" · ")}
 async function newSurvey(){
   const now=new Date(),d=today();
-  const v={id:uid(),kind:"survey",date:d,area:suggestedArea(d),site:"",arrival:hhmm(now),departure:"",lat:"",lng:"",acc:"",
+  const v={id:uid(),kind:"survey",date:d,area:"",site:"",arrival:hhmm(now),departure:"",lat:"",lng:"",acc:"",
     sv:{owner:"",farmNo:"",reqNo:"",company:"",fenced:"",wOk:0,wWeak:0,wBur:0,palms:0,gh:0},
     obs:[{id:"sv",type:SURV,desc:"",action:A_SURV,photos:[]}],notes:"",status:"open",createdAt:Date.now(),updatedAt:Date.now()};
   S.visits.push(v);await saveVisit(v,true);
@@ -1169,7 +1165,6 @@ function assistRules(){
   return `أنت المساعد الشخصي للمفتش البيئي ${S.settings.name} في هيئة البيئة، منطقة الظفرة. جاوب بالعربي بلهجة خليجية مهذبة ومختصرة (جمل قليلة)، إلا إذا طلب نص رسمي فاكتبه بالفصحى.
 اعتمد فقط على بيانات الزيارات تحت. إذا السؤال يحتاج معلومة غير موجودة قل ذلك بوضوح ولا تخمّن. للأرقام اعتمد على جدول الإحصاءات الجاهز.
 تاريخ اليوم ${today()} (${DAYS[new Date().getDay()]}). الأسبوع يبدأ الاثنين. الزيارة = سجل زيارة لموقع. المشاهدة = أي نوع غير «${NO_OBS}». المخالفة = الإجراء «${A_VIOL}».
-جدول المفتش المعتاد: الاثنين والأربعاء ليوا والمرفأ والرويس وغياثي والسلع، الثلاثاء والخميس حبشان، الجمعة مدينة زايد.
 
 الإحصاءات الشهرية الجاهزة (شهر | فئة | أرقام):
 ${aggText(S.visits)||"لا توجد زيارات بعد"}

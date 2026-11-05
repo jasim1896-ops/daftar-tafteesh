@@ -13,11 +13,7 @@ Read this whole file before doing anything. It is the hand-off from the original
 
 Working days **Monday–Friday** (Saturday/Sunday off), roughly 07:00–15:00; Friday is a half day.
 
-| Day | Usual areas |
-|---|---|
-| Monday, Wednesday | ليوا (one or two محاضر per visit) / المرفأ / الرويس / غياثي / sometimes السلع |
-| Tuesday, Thursday | حبشان (East or West, alternating) |
-| Friday | مدينة زايد |
+**No fixed weekday schedule (decided 2026-11-05).** The old Mon/Wed coast, Tue/Thu Habshan, Fri Madinat Zayed table was only for back-filling 2026 reports with a ready Excel sheet; that idea is dropped. The app must not suggest or pre-select an area by weekday: he opens a visit and picks the area himself every time. Do not add a schedule back.
 
 Each visit: area, site (محضر), date, arrival/departure time, GPS coordinates, observations with photos.
 - If a violation is observed **and the offender is present** → «تم تحرير مخالفة».
@@ -47,7 +43,7 @@ Sheets: طريقة الاستخدام · سجل الزيارات · التقري
 
 ### `src/app.html` → the phone app (single file, vanilla JS, RTL)
 Tabs: اليوم · السجل · التصدير · المساعد · الإعدادات.
-- Start visit, which stamps arrival time and suggests the area from the weekday schedule. Area chips, site select (add new), coordinates (GPS or paste), observations (type, description, action, photos), departure, finish.
+- Start visit, which stamps arrival time (area starts empty; he picks it). Area chips, site select (add new), coordinates (GPS or paste), observations (type, description, action, photos), departure, finish.
 - Photos are resized to 1920 px JPEG with a burned-in stamp: date, time, site, coordinates, inspector name.
 - Export builds the **full workbook** by filling `template_clean.xlsx` (embedded as base64, `/*TPL*/""` placeholder) with JSZip XML patching: all visits into the log, report inputs set to the chosen period, the summary note into the matching notes cell. ZIP option adds the photos folder.
 - Assistant features (only when Claude `sample` is available): data Q&A chat, formal rewrite of an observation, report summary and recommendations, parsing pasted «مساعد القيادة» text into visits (`### بداية` / `### مشاهدة` blocks; there is a keyword fallback without AI).
