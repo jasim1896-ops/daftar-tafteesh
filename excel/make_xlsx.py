@@ -146,16 +146,6 @@ for i, (k, a, b) in enumerate([("الفترة", "من شهر", "إلى شهر")]
         if i == 0: c.fill = fill(GREEN2)
 ws.column_dimensions["R"].width = 16; ws.column_dimensions["S"].width = 9; ws.column_dimensions["T"].width = 9
 
-SCHED = [("اليوم", "المناطق المعتادة"), ("الاثنين", "ليوا (محضر أو محضرين) / المرفأ / الرويس / غياثي / السلع"),
-         ("الثلاثاء", "حبشان (شرق أو غرب)"), ("الأربعاء", "ليوا (محضر أو محضرين) / المرفأ / الرويس / غياثي / السلع"),
-         ("الخميس", "حبشان (شرق أو غرب)"), ("الجمعة", "مدينة زايد (نصف دوام)")]
-for i, (a, b) in enumerate(SCHED):
-    ca = ws.cell(11 + i, 22, a); cb = ws.cell(11 + i, 23, b)
-    for c in (ca, cb):
-        c.border = BORDER; c.alignment = RIGHT
-        c.font = f(11, True, WHITE) if i == 0 else f(10)
-        if i == 0: c.fill = fill(GREEN2)
-ws.column_dimensions["V"].width = 11; ws.column_dimensions["W"].width = 50
 ws.column_dimensions["K"].width = 3; ws.column_dimensions["M"].width = 3
 ws.column_dimensions["O"].width = 3; ws.column_dimensions["Q"].width = 3; ws.column_dimensions["U"].width = 3
 ws.freeze_panes = "A12"
