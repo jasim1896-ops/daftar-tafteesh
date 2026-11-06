@@ -1411,23 +1411,55 @@ function toClips(t){const s=String(t||""),out=[];let i=0;
     if(hit){out.push(CLIP_TXT[hit]);i+=hit.length;continue}
     i++}
   return out}
-const VAU={el:null,tok:0,cur:null,bad:0};
+/* Playback (fix 2026-11-06 b): on iOS, after the mic was used, switching an <audio> to the next clip failed, so only the
+   first piece of a joined sentence was heard («مدينة زايد» but not «في مشاهدات؟»), and each clip loaded on demand (delay).
+   Now: all clips are fetched and decoded once when the assistant starts (CDN allows CORS), leading/trailing silence is cut,
+   the pieces of one sentence are joined into ONE WAV in memory and played with a single play() on one <audio> element,
+   which is unlocked by a silent play inside the start tap. Decoding uses an OfflineAudioContext, so no live audio graph. */
+const VAU={el:null,tok:0,cur:null,bad:0,dec:null,pcm:{},load:{},rate:44100,url:null,unlocked:false,pre:false};
 function vaAudio(){if(!VAU.el){const a=new Audio();a.preload="auto";a.setAttribute("playsinline","");VAU.el=a}return VAU.el}
+function vaDec(){if(!VAU.dec){const C=window.OfflineAudioContext||window.webkitOfflineAudioContext;if(C)try{VAU.dec=new C(1,1,44100)}catch(e){}}return VAU.dec}
+function decodeAB(ctx,ab){return new Promise((res,rej)=>{let p;try{p=ctx.decodeAudioData(ab,res,rej)}catch(e){rej(e)}if(p&&p.then)p.then(res,rej)})}
+function trimPCM(d,rate){const th=0.01;let a=0,b=d.length-1;while(a<b&&Math.abs(d[a])<th)a++;while(b>a&&Math.abs(d[b])<th)b--;
+  const pad=Math.round(rate*0.04);return d.slice(Math.max(0,a-pad),Math.min(d.length,b+1+pad))}
+function loadClip(id){if(VAU.pcm[id])return Promise.resolve(VAU.pcm[id]);if(VAU.load[id])return VAU.load[id];
+  const ctx=vaDec();if(!ctx||!window.fetch)return Promise.reject(new Error("no decoder"));
+  return VAU.load[id]=fetch(CLIP_BASE+CLIP_SRC[id]+".mp3").then(r=>{if(!r.ok)throw new Error("http "+r.status);return r.arrayBuffer()})
+    .then(ab=>decodeAB(ctx,ab)).then(buf=>{VAU.rate=buf.sampleRate;const d=trimPCM(buf.getChannelData(0),buf.sampleRate);VAU.pcm[id]=d;return d})
+    .catch(e=>{delete VAU.load[id];throw e})}
+const CLIP_ORDER=Object.keys(CLIP_SRC).sort((x,y)=>"qcamhwstnp".indexOf(x[0])-"qcamhwstnp".indexOf(y[0]));
+function vaPreload(){if(VAU.pre)return;VAU.pre=true;let i=0;const next=()=>{if(i>=CLIP_ORDER.length)return;const id=CLIP_ORDER[i++];loadClip(id).catch(()=>{}).then(next)};for(let k=0;k<4;k++)next()}
+function wavBlob(parts,rate,gapS){const gap=Math.round(rate*gapS);let n=0;parts.forEach((p,i)=>n+=p.length+(i?gap:0));
+  const buf=new ArrayBuffer(44+n*2),v=new DataView(buf),w=(o,x)=>{for(let i=0;i<x.length;i++)v.setUint8(o+i,x.charCodeAt(i))};
+  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
+  let o=44;parts.forEach((p,i)=>{if(i)o+=gap*2;for(let j=0;j<p.length;j++){const x=p[j]<-1?-1:p[j]>1?1:p[j];v.setInt16(o,x<0?x*0x8000:x*0x7fff,true);o+=2}});
+  return new Blob([buf],{type:"audio/wav"})}
+function vaUnlock(){if(VAU.unlocked)return;VAU.unlocked=true;const a=vaAudio();
+  try{a.src=URL.createObjectURL(wavBlob([new Float32Array(441)],44100,0));const p=a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
 function hush(){VAU.tok++;if(VAU.cur)VAU.cur(null);try{if(VAU.el)VAU.el.pause()}catch(e){}try{window.speechSynthesis.cancel()}catch(e){}}
-function playClip(id){return new Promise(res=>{const a=vaAudio();let done=false,tm=null;
+function playURL(url,dur){return new Promise(res=>{const a=vaAudio();let done=false,tm=null;
   const end=ok=>{if(done)return;done=true;clearTimeout(tm);a.onended=a.onerror=null;if(VAU.cur===end)VAU.cur=null;res(ok)};
-  VAU.cur=end;tm=setTimeout(()=>end(false),8000);
-  a.onended=()=>end(true);a.onerror=()=>end(false);
-  a.src=CLIP_BASE+CLIP_SRC[id]+".mp3";
+  VAU.cur=end;tm=setTimeout(()=>end(true),dur*1000+3000);
+  a.onended=()=>end(true);a.onerror=()=>end(false);a.src=url;
   try{const p=a.play();if(p&&p.catch)p.catch(()=>end(false))}catch(e){end(false)}})}
 async function speak(t){hush();const tok=VAU.tok;if(!t)return;
+  vaUnlock();vaPreload();
   const ids=toClips(t).filter(id=>CLIP_SRC[id]);
   if(!ids.length)return;
-  if(VAU.bad>=2)return speakTTS(t);
-  for(let k=0;k<ids.length;k++){
-    const ok=await playClip(ids[k]);if(tok!==VAU.tok||ok===null)return;
-    if(ok){VAU.bad=0;continue}
-    VAU.bad++;if(k===0)return speakTTS(t);return}}
+  if(VAU.bad>=2||!vaDec())return speakTTS(t);
+  let parts;
+  try{parts=await Promise.race([Promise.all(ids.map(loadClip)),new Promise((_,rej)=>setTimeout(()=>rej(new Error("slow")),6000))])}
+  catch(e){if(tok!==VAU.tok)return;VAU.bad++;return speakTTS(t)}
+  if(tok!==VAU.tok)return;
+  const GAP=0.08,blob=wavBlob(parts,VAU.rate,GAP),url=URL.createObjectURL(blob);
+  const dur=parts.reduce((x,p)=>x+p.length,0)/VAU.rate+GAP*(parts.length-1);
+  const old=VAU.url;VAU.url=url;
+  const ok=await playURL(url,dur);
+  if(old)try{URL.revokeObjectURL(old)}catch(e){}
+  if(tok!==VAU.tok||ok===null)return;
+  if(ok){VAU.bad=0;return}
+  VAU.bad++;return speakTTS(t)}
 /* fallback: the phone's own Arabic voice */
 function vaVoice(){const vs=(window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang));
   return vs.find(x=>/AE/i.test(x.lang))||vs.find(x=>/SA/i.test(x.lang))||vs[0]||null}
@@ -1494,7 +1526,7 @@ async function vaAsk(pre){
 async function vaListen(g){
   VA.mode="listen";VA.heard="";vaRender();
   hush();
-  const r=await listen(VA.step==="desc"?25000:9000,VA.step==="desc"?2200:1300);
+  const r=await listen(VA.step==="desc"?25000:9000,VA.step==="desc"?2200:1000);
   if(g!==VA.gen||!VA.on)return;
   if(r.err){
     if(r.err==="network")return vaWait("التعرف على الصوت يحتاج إنترنت. اضغط «تكلّم» لما ترجع التغطية.");
