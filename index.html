@@ -517,6 +517,13 @@ function vSettings(){
     <div class="chips">${(st.companies||[]).map((t,i)=>`<span class="rm-chip">${esc(t)}<button aria-label="حذف ${esc(t)}" data-act="rmCo" data-i="${i}">×</button></span>`).join("")}</div>
     <div class="addline"><input class="inp" id="newCo" placeholder="اسم شركة جديدة"><button class="btn" data-act="addCo">إضافة</button></div>
   </div>
+  ${window.speechSynthesis?(()=>{const vs=vaVoices(),cur=vaVoice(),r=vaRate();
+    return `<div class="card stack"><h3>صوت المساعد الآلي</h3>
+    ${vs.length?`<div class="stack">${vs.slice().sort((a,b)=>vaScore(b)-vaScore(a)).map(x=>`<button class="chip" style="display:flex;width:100%;justify-content:center" data-act="vaVoice" data-v="${esc(x.voiceURI)}" aria-pressed="${!!cur&&cur.voiceURI===x.voiceURI}">${esc(x.name)}</button>`).join("")}</div>`
+      :`<div class="small muted">الجوال ما عطى التطبيق أي صوت عربي لحين. افتح هالصفحة مرة ثانية بعد ثواني.</div>`}
+    <div class="chips" role="group" aria-label="سرعة الكلام">${[[0.9,"أبطأ"],[1,"عادي"],[1.1,"أسرع"]].map(([v,t])=>`<button class="chip" data-act="vaRate" data-v="${v}" aria-pressed="${r===v}">${t}</button>`).join("")}</div>
+    <button class="btn block" data-act="vaTest">${IC.mic}جرّب الصوت</button>
+    <div class="hint">${IC.info}<span>هذي الأصوات اللي يسمح فيها سفاري للتطبيق. لو ما شفت «استثنائي» أو «محسّن» أو Premium أو Enhanced في القائمة، معناها سفاري ما يعطيه للتطبيق.</span></div></div>`})():""}
   <div class="card stack"><h3>البيانات</h3>
     <div class="small muted" id="storeInfo">${Cloud.ok?"زياراتك وصورك محفوظة في حسابك، وتظهر لك من أي جهاز تفتح منه التطبيق.":DB.ok?"البيانات محفوظة على هذا الجهاز فقط.":"البيانات مؤقتة في هذه الجلسة فقط."}</div>
     <button class="btn danger block ${S.armed==="wipe"?"armed":""}" data-act="wipe">${S.armed==="wipe"?"اضغط مرة ثانية لحذف كل الزيارات والصور":"حذف كل البيانات"}</button>
@@ -1443,7 +1450,13 @@ function playURL(url,dur){return new Promise(res=>{const a=vaAudio();let done=fa
   VAU.cur=end;tm=setTimeout(()=>end(true),dur*1000+3000);
   a.onended=()=>end(true);a.onerror=()=>end(false);a.src=url;
   try{const p=a.play();if(p&&p.catch)p.catch(()=>end(false))}catch(e){end(false)}})}
+/* Plan B (2026-11-06, after his second field test): on iPhone, once the mic is used, Safari routes <audio> to the earpiece
+   and the recognizer stops hearing him. The phone's own voice (speechSynthesis) is not affected, so the web app speaks with it,
+   picking the best Arabic voice it is given (Premium/Enhanced first) or the one he chose in Settings. The recorded Grady clips
+   and their player stay in the code for a future native app: set VA_CLIPS=true to use them again. */
+const VA_CLIPS=false;
 async function speak(t){hush();const tok=VAU.tok;if(!t)return;
+  if(!VA_CLIPS)return speakTTS(t);
   vaUnlock();vaPreload();
   const ids=toClips(t).filter(id=>CLIP_SRC[id]);
   if(!ids.length)return;
@@ -1461,11 +1474,18 @@ async function speak(t){hush();const tok=VAU.tok;if(!t)return;
   if(ok){VAU.bad=0;return}
   VAU.bad++;return speakTTS(t)}
 /* fallback: the phone's own Arabic voice */
-function vaVoice(){const vs=(window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang));
-  return vs.find(x=>/AE/i.test(x.lang))||vs.find(x=>/SA/i.test(x.lang))||vs[0]||null}
+function vaVoices(){try{return (window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang))}catch(e){return []}}
+function vaScore(x){const n=((x.name||"")+" "+(x.voiceURI||"")).toLowerCase();let k=0;
+  if(/premium|استثنائي/.test(n))k+=30;else if(/enhanced|محسّن|محسن/.test(n))k+=20;
+  if(/compact/.test(n))k-=5;if(/^ar[-_]ae/i.test(x.lang))k+=3;else if(/^ar[-_]sa/i.test(x.lang))k+=2;if(x.localService)k+=1;return k}
+function vaVoice(){const vs=vaVoices();if(!vs.length)return null;const want=S.settings&&S.settings.vaVoice;
+  if(want){const w=vs.find(x=>x.voiceURI===want);if(w)return w}
+  return vs.slice().sort((a,b)=>vaScore(b)-vaScore(a))[0]}
+function vaRate(){const r=S.settings&&S.settings.vaRate;return r>=0.7&&r<=1.3?r:1}
+try{if(window.speechSynthesis)window.speechSynthesis.addEventListener("voiceschanged",()=>{if(S.view==="settings")render(true)})}catch(e){}
 function speakTTS(t){return new Promise(res=>{const ss=window.speechSynthesis;if(!ss||!t)return res();
   try{ss.cancel()}catch(e){}
-  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();if(vo){u.voice=vo;u.lang=vo.lang}else u.lang="ar-SA";u.rate=1;
+  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();u.lang="ar-SA";if(vo)try{u.voice=vo;u.lang=vo.lang}catch(e){}u.rate=vaRate();
   let done=false;const tm=setTimeout(()=>end(),2500+t.length*120);function end(){if(done)return;done=true;clearTimeout(tm);res()}
   u.onend=end;u.onerror=end;try{ss.speak(u)}catch(e){end()}})}
 /* one utterance; resolves {alts:[...]} or {silent:true} or {err} */
@@ -1783,6 +1803,9 @@ document.addEventListener("click",async e=>{
     case "aiSummary":return aiSummary();
     case "formal":return aiFormal(b.dataset.oid);
     case "undoFormal":{if(!v)return;const o=v.obs.find(x=>x.id===b.dataset.oid);if(o&&S.undo[o.id]!=null){o.desc=S.undo[o.id];delete S.undo[o.id];saveVisit(v);render(true)}return}
+    case "vaVoice":S.settings.vaVoice=b.dataset.v||"";await saveSettings();render(true);return speakTTS("وين المنطقة؟");
+    case "vaRate":S.settings.vaRate=+b.dataset.v||1;await saveSettings();render(true);return speakTTS("وين المنطقة؟");
+    case "vaTest":return speakTTS("هلا. وين المنطقة؟ شو الموقع؟ في مشاهدات؟");
     case "wipe":if(S.armed!=="wipe"){S.armed="wipe";render(true);setTimeout(()=>{if(S.armed==="wipe"){S.armed=null;render(true)}},5000);return}
       for(const v of S.visits){for(const o of v.obs)for(const p of o.photos)await delPhoto(p);if(Cloud.ok){try{await Cloud.col.doc(v.id).delete()}catch(e){}}}
       await DB.clear("visits").catch(()=>{});await DB.clear("photos").catch(()=>{});S.visits=[];S.dirty.clear();S.armed=null;toast("تم حذف كل البيانات");return render();

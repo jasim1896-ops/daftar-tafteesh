@@ -73,6 +73,13 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 - Visits get `src:"voice"` (shows the «صوتي» pill). Same data model, Excel export unchanged.
 - **Unverified on a real iPhone:** whether iOS lets the mic restart after speech without a tap, and whether speech recognition works while the camera is open. Fallbacks exist (tap «تكلّم», tap the preview, «خلاص، كمّل»). Ask him how it behaved.
 
+### Voice — current state (Plan B, 2026-11-06 evening) — READ THIS FIRST
+- **The recorded Grady clips are OFF on the web (`VA_CLIPS=false`).** Second field test on his iPhone: the first two sentences played, then Safari moved the clips to the earpiece once the mic had been used, and the recognizer stopped hearing him («حبشان الشرقية» several times; he finished with the on-screen chips). This is Safari's handling of `<audio>` + mic in a web app, not fixable from the page. The phone voice (`speechSynthesis`) is not affected — it worked with the mic in the morning.
+- `speak()` now goes straight to `speakTTS()`. `vaVoice()` picks the best Arabic voice Safari exposes (Premium/«استثنائي» > Enhanced/«محسّن» > compact; ar-AE > ar-SA), or the one he chose in Settings (`S.settings.vaVoice` = voiceURI). `vaRate()` = `S.settings.vaRate` (أبطأ 0.9 / عادي 1 / أسرع 1.1).
+- Settings → «صوت المساعد الآلي»: lists the Arabic voices Safari gives the page, a speed choice and «جرّب الصوت». It tells us whether the Premium voice he downloaded is available to the web app at all.
+- The clip code (preload, trim, WAV join, unlock) and the 115 clips stay for a future native app, where the audio route can be controlled.
+- Backup before Plan B: branch `backup-2026-11-06c`.
+
 ### Recorded voice (2026-11-06) — replaces the phone's robotic «ماجد» voice
 - He found iOS TTS (Majed) choppy and robotic; downloading «ماجد (استثنائي)» on the iPhone did not help (Safari web apps don't get it).
 - All assistant speech is now **pre-recorded clips**: voice **Grady**, ElevenLabs v4 via the Higgsfield connector (voice_id `e2a2d2e6-9ed2-59cd-82af-feaa27f8a678`, preset). 115 clips: 56 phrases, numbers 1–10, 6 types, 7 areas, 36 sites. Wording approved by him (Project doc «قائمة-أصوات-المساعد»; links in «روابط-أصوات-المساعد»).
