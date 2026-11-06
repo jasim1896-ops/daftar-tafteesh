@@ -517,13 +517,6 @@ function vSettings(){
     <div class="chips">${(st.companies||[]).map((t,i)=>`<span class="rm-chip">${esc(t)}<button aria-label="حذف ${esc(t)}" data-act="rmCo" data-i="${i}">×</button></span>`).join("")}</div>
     <div class="addline"><input class="inp" id="newCo" placeholder="اسم شركة جديدة"><button class="btn" data-act="addCo">إضافة</button></div>
   </div>
-  ${window.speechSynthesis?(()=>{const vs=vaVoices(),cur=vaVoice(),r=vaRate();
-    return `<div class="card stack"><h3>صوت المساعد الآلي</h3>
-    ${vs.length?`<div class="stack">${vs.slice().sort((a,b)=>vaScore(b)-vaScore(a)).map(x=>`<button class="chip" style="display:flex;width:100%;justify-content:center" data-act="vaVoice" data-v="${esc(x.voiceURI)}" aria-pressed="${!!cur&&cur.voiceURI===x.voiceURI}">${esc(x.name)}</button>`).join("")}</div>`
-      :`<div class="small muted">الجوال ما عطى التطبيق أي صوت عربي لحين. افتح هالصفحة مرة ثانية بعد ثواني.</div>`}
-    <div class="chips" role="group" aria-label="سرعة الكلام">${[[0.9,"أبطأ"],[1,"عادي"],[1.1,"أسرع"]].map(([v,t])=>`<button class="chip" data-act="vaRate" data-v="${v}" aria-pressed="${r===v}">${t}</button>`).join("")}</div>
-    <button class="btn block" data-act="vaTest">${IC.mic}جرّب الصوت</button>
-    <div class="hint">${IC.info}<span>هذي الأصوات اللي يسمح فيها سفاري للتطبيق. لو ما شفت «استثنائي» أو «محسّن» أو Premium أو Enhanced في القائمة، معناها سفاري ما يعطيه للتطبيق.</span></div></div>`})():""}
   <div class="card stack"><h3>البيانات</h3>
     <div class="small muted" id="storeInfo">${Cloud.ok?"زياراتك وصورك محفوظة في حسابك، وتظهر لك من أي جهاز تفتح منه التطبيق.":DB.ok?"البيانات محفوظة على هذا الجهاز فقط.":"البيانات مؤقتة في هذه الجلسة فقط."}</div>
     <button class="btn danger block ${S.armed==="wipe"?"armed":""}" data-act="wipe">${S.armed==="wipe"?"اضغط مرة ثانية لحذف كل الزيارات والصور":"حذف كل البيانات"}</button>
@@ -1397,95 +1390,14 @@ function vaCommand(n){if(n.split(" ").length>3)return null;
 const VA_TYPE_KW=[[/حرق|يحرق|دخان|نار|محروق/,"حرق مخلفات"],[/صهريج|صهاريج|تانكر|تناكر|جوفيه|تعبيه|تحميل/,"تحميل مياه جوفية في صهاريج"],[/صرف|مجاري|(^| )كب|تصريف/,"تصريف / كب صرف صحي"],
   [/زيت|زيوت|تسرب|كيمي|ديزل|بترول/,"تسرب زيوت أو مواد كيميائية"],[/بير|ابار|بيار|حفر/,"حفر آبار غير مصرح"],[/نفايات|قمامه|زباله|مخلفات|قراطيس|اكياس/,"رمي نفايات عامة"]];
 const VA_TRANSIENT=new Set(["pick","newSite","cancel"]);
-const VA_Q={area:"وين المنطقة؟",site:"شو الموقع؟",hasObs:"في مشاهدات؟",type:"شو نوع المشاهدة؟",desc:"صِف المشاهدة.",action:"تم تحرير مخالفة، ولا مشاهدة بس؟",more:"في مشاهدة ثانية؟",finish:"ننهي الزيارة؟",cancel:"أكيد تلغي الزيارة؟"};
+const VA_Q={area:"وين المنطقة؟",site:"وش الموقع؟",hasObs:"في مشاهدات؟",type:"وش نوع المشاهدة؟",desc:"صِف المشاهدة.",action:"تم تحرير مخالفة، ولا مشاهدة بس؟",more:"في مشاهدة ثانية؟",finish:"ننهي الزيارة؟",cancel:"أكيد تلغي الزيارة؟"};
 const VA={on:false,gen:0,step:"",hist:[],vid:null,oid:null,fresh:null,miss:0,silent:0,heard:"",say:"",mode:"",rec:null,stream:null,lock:null,tmp:null,shots:0,viaTap:false,rej:new Set()};
 
-/* Recorded voice (Grady — ElevenLabs via Higgsfield, recorded 2026-11-06, list in the Project doc «قائمة-أصوات-المساعد»).
-   speak(text) maps the on-screen sentence to clips (longest phrase first, names, digits 1–10) and plays them in order
-   on one <audio> element (unlocked by the first play inside the start tap). Parts with no clip (e.g. a site added later)
-   are skipped silently — the text is still on screen. If clips cannot play (offline, files gone) it falls back to the phone voice. */
-const CLIP_BASE="https://d8j0ntlcm91z4.cloudfront.net/user_3KxcXNsGX1h7cj6wUkRO8K9aqTQ/hf_20261106_";
-const CLIP_SRC={"q_area":"052545_82abc535-54f3-4937-8a88-fcd0b4328791","q_site":"052545_625f8a5d-005b-4c31-a88d-7fda92bd863e","q_hasObs":"052545_c42aa282-2a64-488f-bee2-59bc0f908c23","q_type":"052545_31ee514c-1bb6-4a34-8067-df17ac705ab5","q_desc":"052545_cc0cf121-edd5-4dd0-af56-3850bd193a7a","q_action":"052545_f83f203f-e663-46d3-86b9-cb9465daf09c","q_photo0":"052545_e9c18998-ad82-486b-abef-d0cf5471ea44","q_photo1":"052545_ca0dc5ef-4086-4f0e-adf0-f160ca46dee1","q_more":"052545_6b155e5f-b9bd-46d0-b178-f15e7cdfae8e","q_finish":"052605_48b9cfff-5395-4e2a-b1e8-a93bf68e55db","q_cancel":"052545_5fefa4b2-eaaa-4b16-b4c8-acfb3ca9c749","q_pick":"052545_f446ebd6-ac0a-452a-8fe5-187feb2a1fe6","q_newSite":"052605_931b2c6d-4fd5-40a6-8b64-b56abe24f5b2","c_start":"052605_214a7bed-e1ad-40bb-bf22-7a91bf545118","c_noObs":"052605_fabb3c83-aea8-4c85-adde-e379ac884b08","c_viol":"052605_e7a5cf99-42d2-43d7-990f-fd112367fd6f","c_obsOnly":"052605_d21b992b-dcaf-4ba7-86ad-6ce29d470737","c_noPics":"052605_277ba7ad-520c-448f-a1f7-230c067adfdc","c_shot":"052605_6a38972c-86c3-4df2-a754-fea324fd952a","c_descSaved":"052629_fb4b08e9-10ad-4cd1-938f-83fb9a11dc6f","c_siteAdded":"052629_1588639a-0c11-4d43-b42e-dd2e45d36756","c_siteAgain":"052629_052185cd-b852-4515-ba57-895cb2e577af","c_sayAgain":"052629_028d99af-c82a-41bc-a076-7bb44ffb201a","c_resume":"052629_03188385-a878-4714-a6f5-2f660b8ba7af","c_back":"052629_8b723c6b-ca88-42e4-8caf-abed5c80e48c","c_first":"052629_001b6467-1bde-4128-8136-0101f57230d5","c_shotFail":"052702_be9f572a-ab24-4362-9fe5-42529382dbf8","c_cancelled":"052702_6229923c-7068-4325-8d1f-f374815623d6","m_dunno":"052633_04ecf00b-0e6b-483e-bdda-28bd3698b543","m_area":"052636_da5b614e-0f53-487d-810a-74593b685641","m_site":"052633_9e4a4a59-6bb4-4f66-b134-e4372af29048","m_type":"052633_fe831763-3ee4-4a65-a8b1-6ebffba1c21f","h_yesno":"052633_1c6a7da5-e894-490e-8582-af846624a96d","h_action":"052702_ea2ec7d4-9c35-43e1-be0c-57ebd6a4b646","h_areas":"052633_4c35da71-5d27-4940-8924-74e9fe150673","h_sites":"052702_6a87f0d7-d212-4bc5-a8df-a2150e19059e","h_number":"052702_235e0903-141b-496e-bde1-4fa8df505fad","w_net":"052702_64935309-3dfb-4230-ac8a-046e9fd8894f","w_tap":"052702_4260f2e9-6cca-4f5b-86f0-67ff73b38e39","w_mic":"052702_373f1654-5c7b-44d6-98a9-5c6424bd2d27","w_silent":"052725_fdbe0229-1295-489e-a26d-291d5c1a992d","w_cam":"052725_46bc113d-d0c7-43d7-a21c-e67679e0b1f8","w_open":"052725_45a60965-8a35-4ef0-9c58-35073d4f3807","s_saved":"052725_b2bd5a41-47e7-4671-9386-f81c26b65884","s_noObs":"052725_7d331ab6-429f-44dc-af2c-100f506c043c","s_obs1":"052725_d1cbb0b0-129f-4347-86bd-aa174531cbce","s_obs2":"052725_3f4890b8-7713-4757-8fe4-279cee225934","s_obsN":"052725_bc2c46bd-0061-4da7-be76-235cdbe10d4d","s_viol1":"052742_55149968-1a1d-48b4-b5d6-44621a2a2251","s_viol2":"052742_33956e8a-5a9a-4cb1-917e-857036e9c4fb","s_violN":"052742_86ccdbc2-fba3-41b2-a472-b17c34c59141","s_pic1":"052742_aa6c32ab-2a7d-446c-915b-0c1f690dee10","s_pic2":"052742_142a153b-64a8-4cf5-9235-92b780fc6be4","s_picN":"052742_3ae05b09-8da7-4d75-8157-cf26a2a388bf","s_gps":"052742_badb2c53-e603-4eef-ba7b-8d3000009499","s_noGps":"052742_92c84f87-2b0a-4dd7-81e4-9b8a8e60f9ec","n1":"052759_8a86d90a-8eb7-41fe-a6fa-c191b4153d68","n2":"052759_c97eee5f-2398-48f2-98d5-2df8a09724c2","n3":"052759_35f028a6-ddd2-45a6-89ab-7af93600e453","n4":"052759_f8cf4910-b347-41a3-b8cf-a90afb178ab8","n5":"052759_127ef793-6106-41c3-bdd8-5b6ecb30de22","n6":"052759_25ca9cfb-fbaf-4364-8970-5ebd7ff8bf9e","n7":"052759_978bbe40-68d9-41d8-83d4-90e41c2f79f8","n8":"052759_0e043f08-e925-45f2-8c96-f77b75a98447","n9":"052815_afb23952-179f-457d-a9bf-47ce95d7346d","n10":"052815_a75c32cc-d33e-4f67-85ef-e672153ada3b","t1":"052815_658f9038-222e-4991-b2e9-7547f707792a","t2":"052815_5c59413e-4c6e-45a5-900e-3592897ba28f","t3":"052815_8f9906af-a871-4a2f-9b69-946c8b6b1942","t4":"052816_f0049f7a-08fb-42b7-9d42-706144e9a06e","t5":"052815_2bfffb3e-f831-4b2e-92f7-6a3f57e98151","t6":"052815_4e677d88-ef88-4485-be57-80553c11f31e","a1":"052832_6cacbb34-7225-4b63-b257-3e83b454305d","a2":"052832_5b33f94a-7886-4841-953a-f2ebdb7aa1a9","a3":"052832_7b754b97-0531-43dd-bbff-9f72bcae7e27","a4":"052832_17ee4a07-1ebc-4cc5-bd46-f5678e496545","a5":"052832_ce4d7f6a-8885-4e14-b02f-933bbfea830a","a6":"052832_630f3cf0-c70f-4a58-8fc0-2a65c9304314","a7":"052848_5f543c47-56f5-446b-b7ae-15fff89bde9c","p1":"052832_a569e54c-935f-484e-86e7-2095826ae401","p2":"052848_6753f1cb-c514-4958-920a-b2b9cfed12f8","p3":"052849_e2399189-30af-48f9-aaa3-0e2ce2fbd521","p4":"052848_8689dd3f-1c9c-49de-9173-4c58e69a1db0","p5":"052848_02526483-61f8-44bf-8d63-917c47f169d6","p6":"052848_1cdac94e-5f43-4329-aeb1-16b003d29a7a","p7":"052848_099cf98d-3fc2-4141-aaf8-318f3c804aca","p8":"052848_65b4a092-d832-496b-94fd-58b182436fc2","p9":"052906_dd4279f5-397e-41cc-9260-994b0a9e1973","p10":"052905_48af0491-32ff-4a1d-be86-b20cd08a58f9","p11":"052906_a5e30130-d66d-4fc2-b8e8-f173ba843fca","p12":"052905_ae8892e7-8dd3-4bc5-b45d-7a9d5600ddf7","p13":"052906_93ba9e61-ec60-428a-8e23-188070112e74","p14":"052905_750f66b3-1241-4ca9-b94d-2da68f9a0a88","p15":"052923_ac4bf7c8-dce1-4c95-98c9-8c3290017f8b","p16":"052905_980cf2e8-eede-403a-87c4-d5fb3c09b9c1","p17":"052923_d66117dd-f39b-416e-bb46-9abb87fa3c68","p18":"052923_2aba8c21-795b-48fc-b6bf-94baba307f8c","p19":"052922_43b78820-e25e-46f6-86bf-7c1c0fbf1c30","p20":"052925_f598d98f-1344-4631-94f9-4d7854e44718","p21":"052923_c66c164f-8cda-4345-b8c0-387ba4bc114a","p22":"052922_a70e97f3-0566-4f06-b064-c9f98bcc3a07","p23":"052923_d711c6d3-3554-4b8e-a112-2347cca38bc6","p24":"052941_89ccd5d4-574c-4036-a11a-80d9b61668f0","p25":"052941_224bb1e2-d7d8-4ef1-9070-2935ecc5fdca","p26":"052941_3acf8cb7-6e0e-46ba-b412-9f9f0d6c325d","p27":"052941_9c181d65-aa0c-4e76-a328-f37d1c862443","p28":"052941_d937f847-c6f3-4b5b-9a8d-eca8f007333b","p29":"052941_79578ac4-bba1-4570-8a72-04b8d1d86851","p30":"052941_59debdd2-9b4b-454f-881d-1a8c336fdc02","p31":"052941_96055dd4-0db1-4d11-9fbe-e46fa48dbcd4","p32":"052956_befa25fd-c0c0-48d2-8367-f6665a9a48b6","p33":"052956_ef581deb-cb2d-40d6-8dc2-92ef7afca66a","p34":"052956_1c3a4f77-4329-412a-8164-977ab13327b3","p35":"052956_2edc9c71-eade-421f-af15-28e9a5450ae2","p36":"052956_ed867787-6131-4a1d-a500-0ac6efb48999"};
-const CLIP_TXT={"وين المنطقة؟":"q_area","شو الموقع؟":"q_site","في مشاهدات؟":"q_hasObs","شو نوع المشاهدة؟":"q_type","صِف المشاهدة.":"q_desc","تم تحرير مخالفة، ولا مشاهدة بس؟":"q_action","الكاميرا جاهزة. قل صوّر، أو خلاص.":"q_photo0","قل صوّر لصورة ثانية، أو خلاص.":"q_photo1","في مشاهدة ثانية؟":"q_more","ننهي الزيارة؟":"q_finish","أكيد تلغي الزيارة؟":"q_cancel","تقصد":"q_pick","ما لقيت هذا الموقع في القائمة. أضيفه موقع جديد؟":"q_newSite","بدأت الزيارة.":"c_start","لا توجد مشاهدات.":"c_noObs","تم تحرير مخالفة.":"c_viol","مشاهدة فقط.":"c_obsOnly","بدون صور.":"c_noPics","تم، صورة":"c_shot","سجّلت الوصف.":"c_descSaved","أضفت الموقع.":"c_siteAdded","قل اسم الموقع مرة ثانية.":"c_siteAgain","قلها مرة ثانية.":"c_sayAgain","نكمل.":"c_resume","رجعنا.":"c_back","هذي أول خطوة.":"c_first","ما قدرت أصوّر.":"c_shotFail","انلغت الزيارة.":"c_cancelled","ما فهمت.":"m_dunno","ما عرفت المنطقة.":"m_area","ما عرفت الموقع.":"m_site","ما عرفت النوع.":"m_type","قل نعم أو لا.":"h_yesno","قل مخالفة، أو مشاهدة بس.":"h_action","المناطق:":"h_areas","المواقع:":"h_sites","قل الرقم:":"h_number","التعرف على الصوت يحتاج إنترنت. اضغط «تكلّم» لما ترجع التغطية.":"w_net","اضغط الزر الأخضر «تكلّم» عشان أسمعك.":"w_tap","المايك مب متاح. كمّل من الشاشة.":"w_mic","ما سمعتك. اضغط «تكلّم» لما تجهز.":"w_silent","الكاميرا مب متاحة، أضف الصور بعدين من الشاشة.":"w_cam","تمام، الزيارة باقية مفتوحة. كمّلها من الشاشة.":"w_open","انحفظت زيارة":"s_saved","بدون مشاهدات.":"s_noObs","مشاهدة واحدة.":"s_obs1","مشاهدتين.":"s_obs2","مشاهدات.":"s_obsN","مخالفة واحدة.":"s_viol1","مخالفتين.":"s_viol2","مخالفات.":"s_violN","صورة واحدة.":"s_pic1","صورتين.":"s_pic2","صور.":"s_picN","الإحداثيات مسجلة.":"s_gps","ما انسجلت الإحداثيات، أضفها من الشاشة.":"s_noGps","حرق مخلفات":"t1","تحميل مياه جوفية في صهاريج":"t2","تصريف / كب صرف صحي":"t3","رمي نفايات عامة":"t4","تسرب زيوت أو مواد كيميائية":"t5","حفر آبار غير مصرح":"t6","ليوا":"a1","حبشان":"a2","الرويس":"a3","المرفأ":"a4","غياثي":"a5","السلع":"a6","مدينة زايد":"a7","الثروانية":"p1","الجبانة":"p2","مزيرعة":"p3","حميم":"p4","بوعوانة":"p5","اليارية":"p6","موقب":"p7","الخيس":"p8","نشاش":"p9","وذين":"p10","اليبانة":"p11","يرّة":"p12","موصل":"p13","قرمدة":"p14","نفير":"p15","الرايقة":"p16","المارية":"p17","المارية الغربية":"p18","عتاب":"p19","خنّور":"p20","الحميضي":"p21","الصبخة":"p22","حفيف":"p23","قطوف":"p24","الهيلة":"p25","عرادة":"p26","ملقطة":"p27","العيد":"p28","أم القرين":"p29","العاطر":"p30","الهذي":"p31","المشرب":"p32","مهدر بن عصيان":"p33","حبشان الشرقية":"p34","حبشان الغربية":"p35","الطريف":"p36"};
-const CLIP_KEYS=Object.keys(CLIP_TXT).sort((a,b)=>b.length-a.length);
-const isArL=c=>!!c&&/[\u0621-\u064A\u0671-\u06D3]/.test(c);
-function toClips(t){const s=String(t||""),out=[];let i=0;
-  while(i<s.length){
-    if(isArL(s[i-1])){i++;continue}
-    const d=/^\d{1,2}(?!\d)/.exec(s.slice(i));
-    if(d&&!/\d/.test(s[i-1]||"")){const n=+d[0];if(n>=1&&n<=10)out.push("n"+n);i+=d[0].length;continue}
-    let hit=null;for(const k of CLIP_KEYS)if(s.startsWith(k,i)&&!isArL(s[i+k.length])){hit=k;break}
-    if(hit){out.push(CLIP_TXT[hit]);i+=hit.length;continue}
-    i++}
-  return out}
-/* Playback (fix 2026-11-06 b): on iOS, after the mic was used, switching an <audio> to the next clip failed, so only the
-   first piece of a joined sentence was heard («مدينة زايد» but not «في مشاهدات؟»), and each clip loaded on demand (delay).
-   Now: all clips are fetched and decoded once when the assistant starts (CDN allows CORS), leading/trailing silence is cut,
-   the pieces of one sentence are joined into ONE WAV in memory and played with a single play() on one <audio> element,
-   which is unlocked by a silent play inside the start tap. Decoding uses an OfflineAudioContext, so no live audio graph. */
-const VAU={el:null,tok:0,cur:null,bad:0,dec:null,pcm:{},load:{},rate:44100,url:null,unlocked:false,pre:false};
-function vaAudio(){if(!VAU.el){const a=new Audio();a.preload="auto";a.setAttribute("playsinline","");VAU.el=a}return VAU.el}
-function vaDec(){if(!VAU.dec){const C=window.OfflineAudioContext||window.webkitOfflineAudioContext;if(C)try{VAU.dec=new C(1,1,44100)}catch(e){}}return VAU.dec}
-function decodeAB(ctx,ab){return new Promise((res,rej)=>{let p;try{p=ctx.decodeAudioData(ab,res,rej)}catch(e){rej(e)}if(p&&p.then)p.then(res,rej)})}
-function trimPCM(d,rate){const th=0.01;let a=0,b=d.length-1;while(a<b&&Math.abs(d[a])<th)a++;while(b>a&&Math.abs(d[b])<th)b--;
-  const pad=Math.round(rate*0.04);return d.slice(Math.max(0,a-pad),Math.min(d.length,b+1+pad))}
-function loadClip(id){if(VAU.pcm[id])return Promise.resolve(VAU.pcm[id]);if(VAU.load[id])return VAU.load[id];
-  const ctx=vaDec();if(!ctx||!window.fetch)return Promise.reject(new Error("no decoder"));
-  return VAU.load[id]=fetch(CLIP_BASE+CLIP_SRC[id]+".mp3").then(r=>{if(!r.ok)throw new Error("http "+r.status);return r.arrayBuffer()})
-    .then(ab=>decodeAB(ctx,ab)).then(buf=>{VAU.rate=buf.sampleRate;const d=trimPCM(buf.getChannelData(0),buf.sampleRate);VAU.pcm[id]=d;return d})
-    .catch(e=>{delete VAU.load[id];throw e})}
-const CLIP_ORDER=Object.keys(CLIP_SRC).sort((x,y)=>"qcamhwstnp".indexOf(x[0])-"qcamhwstnp".indexOf(y[0]));
-function vaPreload(){if(VAU.pre)return;VAU.pre=true;let i=0;const next=()=>{if(i>=CLIP_ORDER.length)return;const id=CLIP_ORDER[i++];loadClip(id).catch(()=>{}).then(next)};for(let k=0;k<4;k++)next()}
-function wavBlob(parts,rate,gapS){const gap=Math.round(rate*gapS);let n=0;parts.forEach((p,i)=>n+=p.length+(i?gap:0));
-  const buf=new ArrayBuffer(44+n*2),v=new DataView(buf),w=(o,x)=>{for(let i=0;i<x.length;i++)v.setUint8(o+i,x.charCodeAt(i))};
-  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
-  v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
-  let o=44;parts.forEach((p,i)=>{if(i)o+=gap*2;for(let j=0;j<p.length;j++){const x=p[j]<-1?-1:p[j]>1?1:p[j];v.setInt16(o,x<0?x*0x8000:x*0x7fff,true);o+=2}});
-  return new Blob([buf],{type:"audio/wav"})}
-function vaUnlock(){if(VAU.unlocked)return;VAU.unlocked=true;const a=vaAudio();
-  try{a.src=URL.createObjectURL(wavBlob([new Float32Array(441)],44100,0));const p=a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
-function hush(){VAU.tok++;if(VAU.cur)VAU.cur(null);try{if(VAU.el)VAU.el.pause()}catch(e){}try{window.speechSynthesis.cancel()}catch(e){}}
-function playURL(url,dur){return new Promise(res=>{const a=vaAudio();let done=false,tm=null;
-  const end=ok=>{if(done)return;done=true;clearTimeout(tm);a.onended=a.onerror=null;if(VAU.cur===end)VAU.cur=null;res(ok)};
-  VAU.cur=end;tm=setTimeout(()=>end(true),dur*1000+3000);
-  a.onended=()=>end(true);a.onerror=()=>end(false);a.src=url;
-  try{const p=a.play();if(p&&p.catch)p.catch(()=>end(false))}catch(e){end(false)}})}
-/* Plan B (2026-11-06, after his second field test): on iPhone, once the mic is used, Safari routes <audio> to the earpiece
-   and the recognizer stops hearing him. The phone's own voice (speechSynthesis) is not affected, so the web app speaks with it,
-   picking the best Arabic voice it is given (Premium/Enhanced first) or the one he chose in Settings. The recorded Grady clips
-   and their player stay in the code for a future native app: set VA_CLIPS=true to use them again. */
-const VA_CLIPS=false;
-async function speak(t){hush();const tok=VAU.tok;if(!t)return;
-  if(!VA_CLIPS)return speakTTS(t);
-  vaUnlock();vaPreload();
-  const ids=toClips(t).filter(id=>CLIP_SRC[id]);
-  if(!ids.length)return;
-  if(VAU.bad>=2||!vaDec())return speakTTS(t);
-  let parts;
-  try{parts=await Promise.race([Promise.all(ids.map(loadClip)),new Promise((_,rej)=>setTimeout(()=>rej(new Error("slow")),6000))])}
-  catch(e){if(tok!==VAU.tok)return;VAU.bad++;return speakTTS(t)}
-  if(tok!==VAU.tok)return;
-  const GAP=0.08,blob=wavBlob(parts,VAU.rate,GAP),url=URL.createObjectURL(blob);
-  const dur=parts.reduce((x,p)=>x+p.length,0)/VAU.rate+GAP*(parts.length-1);
-  const old=VAU.url;VAU.url=url;
-  const ok=await playURL(url,dur);
-  if(old)try{URL.revokeObjectURL(old)}catch(e){}
-  if(tok!==VAU.tok||ok===null)return;
-  if(ok){VAU.bad=0;return}
-  VAU.bad++;return speakTTS(t)}
-/* fallback: the phone's own Arabic voice */
-function vaVoices(){try{return (window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang))}catch(e){return []}}
-function vaScore(x){const n=((x.name||"")+" "+(x.voiceURI||"")).toLowerCase();let k=0;
-  if(/premium|استثنائي/.test(n))k+=30;else if(/enhanced|محسّن|محسن/.test(n))k+=20;
-  if(/compact/.test(n))k-=5;if(/^ar[-_]ae/i.test(x.lang))k+=3;else if(/^ar[-_]sa/i.test(x.lang))k+=2;if(x.localService)k+=1;return k}
-function vaVoice(){const vs=vaVoices();if(!vs.length)return null;const want=S.settings&&S.settings.vaVoice;
-  if(want){const w=vs.find(x=>x.voiceURI===want);if(w)return w}
-  return vs.slice().sort((a,b)=>vaScore(b)-vaScore(a))[0]}
-function vaRate(){const r=S.settings&&S.settings.vaRate;return r>=0.7&&r<=1.3?r:1}
-try{if(window.speechSynthesis)window.speechSynthesis.addEventListener("voiceschanged",()=>{if(S.view==="settings")render(true)})}catch(e){}
-function speakTTS(t){return new Promise(res=>{const ss=window.speechSynthesis;if(!ss||!t)return res();
+function vaVoice(){const vs=(window.speechSynthesis.getVoices()||[]).filter(x=>/^ar/i.test(x.lang));
+  return vs.find(x=>/AE/i.test(x.lang))||vs.find(x=>/SA/i.test(x.lang))||vs[0]||null}
+function speak(t){return new Promise(res=>{const ss=window.speechSynthesis;if(!ss||!t)return res();
   try{ss.cancel()}catch(e){}
-  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();u.lang="ar-SA";if(vo)try{u.voice=vo;u.lang=vo.lang}catch(e){}u.rate=vaRate();
+  const u=new SpeechSynthesisUtterance(t);const vo=vaVoice();if(vo){u.voice=vo;u.lang=vo.lang}else u.lang="ar-SA";u.rate=1;
   let done=false;const tm=setTimeout(()=>end(),2500+t.length*120);function end(){if(done)return;done=true;clearTimeout(tm);res()}
   u.onend=end;u.onerror=end;try{ss.speak(u)}catch(e){end()}})}
 /* one utterance; resolves {alts:[...]} or {silent:true} or {err} */
@@ -1508,7 +1420,7 @@ function vaObs(){const v=vaVisit();return v&&v.obs.find(o=>o.id===VA.oid)}
 function vaPrompt(){const v=vaVisit();
   if(VA.step==="photo")return VA.shots?"قل صوّر لصورة ثانية، أو خلاص.":"الكاميرا جاهزة. قل صوّر، أو خلاص.";
   if(VA.step==="pick")return "تقصد "+VA.tmp.label+"؟";
-  if(VA.step==="newSite")return "ما لقيت هذا الموقع في القائمة. أضيفه موقع جديد؟";
+  if(VA.step==="newSite")return "ما لقيت «"+VA.tmp.name+"» في مواقع "+(v&&v.area||"")+". أضيفه موقع جديد؟";
   return VA_Q[VA.step]||""}
 function vaHelp(){const st=S.settings,v=vaVisit();
   if(VA.step==="area")return "المناطق: "+Object.keys(st.areas).join("، ")+".";
@@ -1525,7 +1437,7 @@ async function vaStart(){
   S.visits.push(v);saveVisit(v,true);
   Object.assign(VA,{on:true,vid:v.id,oid:null,fresh:null,hist:[],step:"",heard:"",tmp:null,shots:0,viaTap:false,rej:new Set()});
   $("#va").hidden=false;document.documentElement.style.overflow="hidden";
-  vaGo("area","بدأت الزيارة.");   // speaks inside the tap, which unlocks speech on iOS
+  vaGo("area","بدأت زيارة الساعة "+v.arrival+".");   // speaks inside the tap, which unlocks speech on iOS
   locate(v,true);
   try{if(navigator.wakeLock)VA.lock=await navigator.wakeLock.request("screen")}catch(e){VA.lock=null}
 }
@@ -1536,7 +1448,7 @@ function vaGo(step,say,back){
   if(step==="more"||step==="finish")VA.fresh=null;
   VA.step=step;VA.miss=0;VA.silent=0;
   if(step==="photo"){const g=++VA.gen;VA.mode="busy";vaRender();
-    vaCamOn().then(ok=>{if(g!==VA.gen)return;if(ok)vaAsk(say);else vaGo("more",(say?say+" ":"")+"الكاميرا مب متاحة، أضف الصور بعدين من الشاشة.")});return}
+    vaCamOn().then(ok=>{if(g!==VA.gen)return;if(ok)vaAsk(say);else vaGo("more",(say?say+" ":"")+"الكاميرا مو متاحة، أضف الصور بعدين من الشاشة.")});return}
   vaAsk(say)}
 async function vaAsk(pre){
   if(!VA.on)return;const g=++VA.gen;VA.viaTap=false;
@@ -1545,13 +1457,13 @@ async function vaAsk(pre){
   vaListen(g)}
 async function vaListen(g){
   VA.mode="listen";VA.heard="";vaRender();
-  hush();
-  const r=await listen(VA.step==="desc"?25000:9000,VA.step==="desc"?2200:1000);
+  try{window.speechSynthesis.cancel()}catch(e){}
+  const r=await listen(VA.step==="desc"?25000:9000,VA.step==="desc"?2200:1300);
   if(g!==VA.gen||!VA.on)return;
   if(r.err){
     if(r.err==="network")return vaWait("التعرف على الصوت يحتاج إنترنت. اضغط «تكلّم» لما ترجع التغطية.");
     if(!VA.viaTap)return vaWait("اضغط الزر الأخضر «تكلّم» عشان أسمعك.");
-    S.speechBlocked=true;await speak("المايك مب متاح. كمّل من الشاشة.");return vaStop()}
+    S.speechBlocked=true;await speak("المايك مو متاح. كمّل من الشاشة.");return vaStop()}
   if(r.silent){VA.silent++;if(VA.silent>=2)return vaWait("ما سمعتك. اضغط «تكلّم» لما تجهز.");return vaAsk()}
   VA.silent=0;vaHandle(r.alts)}
 function vaWait(msg){const g=++VA.gen;VA.mode="wait";VA.say=msg;vaRender();speak(msg).then(()=>{if(g===VA.gen)vaRender()})}
@@ -1593,7 +1505,7 @@ function vaHandle(alts){
       VA.tmp={name,ret:"site"};return vaGo("newSite")}
     case "newSite":
       if(yn==="yes"){const l=st.areas[v.area]||(st.areas[v.area]=[]);if(!l.includes(VA.tmp.name)){l.push(VA.tmp.name);saveSettings()}
-        v.site=VA.tmp.name;saveVisit(v);return vaGo("hasObs","أضفت الموقع.")}
+        v.site=VA.tmp.name;saveVisit(v);return vaGo("hasObs","أضفت "+v.site+".")}
       if(yn==="no")return vaGo("site","قل اسم الموقع مرة ثانية.",true);
       return vaMiss();
     case "pick":
@@ -1609,7 +1521,7 @@ function vaHandle(alts){
       return vaMiss()}
     case "type":{const ty=vaMatchType(alts);if(!ty)return vaMiss("ما عرفت النوع.");
       const o=vaObs();if(o){o.type=ty;saveVisit(v)}return vaGo("desc",ty+".")}
-    case "desc":{if(t.length<2)return vaMiss();const o=vaObs();if(o){o.desc=t;saveVisit(v)}return vaGo("action","سجّلت الوصف.")}
+    case "desc":{if(t.length<2)return vaMiss();const o=vaObs();if(o){o.desc=t;saveVisit(v)}return vaGo("action","سجّلت: "+t+".")}
     case "action":{const o=vaObs();let a=null;
       if(/مخالف|حرر|تحرير/.test(n)&&!/(^| )(ما|لا|بدون|مافي|ما في)( |$)/.test(n))a=A_VIOL;
       else if(/مشاهد|بس|فقط|بدون|ما في|مافي|لا/.test(n))a=A_OBS;
@@ -1658,13 +1570,11 @@ async function vaCapture(){
   try{const raw=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(),"image/jpeg",0.92));
     await storePhoto(v,o,raw,new Date());VA.shots++;saveVisit(v,true);vaRender();return true}catch(e){return false}}
 function vaPics(n){return n===1?"صورة واحدة.":n===2?"صورتين.":n+" صور."}
-function vaCount(n,one,two,many){return n===1?one:n===2?two:n+" "+many}
 function vaSummary(v){const s=stats([v]);const parts=["انحفظت زيارة "+(v.site||v.area||"")+"."];
-  parts.push(s.obs?vaCount(s.obs,"مشاهدة واحدة.","مشاهدتين.","مشاهدات."):"بدون مشاهدات.");
-  if(s.viol)parts.push(vaCount(s.viol,"مخالفة واحدة.","مخالفتين.","مخالفات."));
+  parts.push(s.obs?(s.obs===1?"مشاهدة واحدة":s.obs+" مشاهدات")+(s.viol?"، و"+(s.viol===1?"مخالفة واحدة":s.viol+" مخالفات"):"")+".":"بدون مشاهدات.");
   if(s.pics)parts.push(vaPics(s.pics));
   parts.push(v.lat?"الإحداثيات مسجلة.":"ما انسجلت الإحداثيات، أضفها من الشاشة.");
-  return parts.join(" ")}
+  parts.push("المغادرة "+v.departure+".");return parts.join(" ")}
 async function vaFinish(){const v=vaVisit();if(!v)return vaStop();
   v.obs=v.obs.filter(o=>o.type);if(!v.obs.length)v.obs=[{id:uid(),type:NO_OBS,desc:"",action:A_NONE,photos:[]}];
   v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);
@@ -1677,7 +1587,7 @@ async function vaCancel(){const v=vaVisit();const g=++VA.gen;vaCamOff();if(v)awa
 /* stop button / «وقف»: keep what was recorded and hand over to the screen */
 function vaStop(keepSpeech){
   if(!VA.on)return;const v=vaVisit();
-  if(!keepSpeech){hush();}
+  if(!keepSpeech){try{window.speechSynthesis.cancel()}catch(e){}}
   vaClose();
   if(v&&!v.site&&!v.obs.length){removeVisit(v).then(()=>render());S.view="today";toast("وقف المساعد، وما انحفظت زيارة");return render()}
   if(v){v.obs=v.obs.filter(o=>o.type||o.desc||o.photos.length);saveVisit(v,true);S.view="visit";S.editId=v.id;S.addingSite=false;toast("وقف المساعد. كمّل الزيارة من هنا")}
@@ -1716,10 +1626,10 @@ document.addEventListener("click",e=>{
   if(k==="back")return vaBack();
   if(k==="shoot"){if(VA.step==="photo")vaShoot();return}
   if(k==="talk"){VA.viaTap=true;VA.silent=0;const g=++VA.gen;return vaListen(g)}   // starts the mic inside the tap
-  if(k==="ans"){if(VA.rec){try{VA.rec.abort()}catch(e){}}hush();VA.gen++;return vaHandle([b.dataset.v])}
+  if(k==="ans"){if(VA.rec){try{VA.rec.abort()}catch(e){}}try{window.speechSynthesis.cancel()}catch(e){}VA.gen++;return vaHandle([b.dataset.v])}
 });
 document.addEventListener("visibilitychange",()=>{if(!VA.on)return;
-  if(document.hidden){VA.gen++;if(VA.rec){try{VA.rec.abort()}catch(e){}}hush();VA.mode="wait";VA.say="متوقف. اضغط «تكلّم» عشان نكمل.";}
+  if(document.hidden){VA.gen++;if(VA.rec){try{VA.rec.abort()}catch(e){}}try{window.speechSynthesis.cancel()}catch(e){}VA.mode="wait";VA.say="متوقف. اضغط «تكلّم» عشان نكمل.";}
   else if(VA.mode==="wait")vaAsk("نكمل.")});
 window.__va={VA,fuzzy,bestMatch,yesNo,arKey};
 
@@ -1803,9 +1713,6 @@ document.addEventListener("click",async e=>{
     case "aiSummary":return aiSummary();
     case "formal":return aiFormal(b.dataset.oid);
     case "undoFormal":{if(!v)return;const o=v.obs.find(x=>x.id===b.dataset.oid);if(o&&S.undo[o.id]!=null){o.desc=S.undo[o.id];delete S.undo[o.id];saveVisit(v);render(true)}return}
-    case "vaVoice":S.settings.vaVoice=b.dataset.v||"";await saveSettings();render(true);return speakTTS("وين المنطقة؟");
-    case "vaRate":S.settings.vaRate=+b.dataset.v||1;await saveSettings();render(true);return speakTTS("وين المنطقة؟");
-    case "vaTest":return speakTTS("هلا. وين المنطقة؟ شو الموقع؟ في مشاهدات؟");
     case "wipe":if(S.armed!=="wipe"){S.armed="wipe";render(true);setTimeout(()=>{if(S.armed==="wipe"){S.armed=null;render(true)}},5000);return}
       for(const v of S.visits){for(const o of v.obs)for(const p of o.photos)await delPhoto(p);if(Cloud.ok){try{await Cloud.col.doc(v.id).delete()}catch(e){}}}
       await DB.clear("visits").catch(()=>{});await DB.clear("photos").catch(()=>{});S.visits=[];S.dirty.clear();S.armed=null;toast("تم حذف كل البيانات");return render();

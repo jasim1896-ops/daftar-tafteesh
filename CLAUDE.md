@@ -73,6 +73,11 @@ Dark button «المساعد الآلي — زيارة بالصوت» on the ا�
 - Visits get `src:"voice"` (shows the «صوتي» pill). Same data model, Excel export unchanged.
 - **Unverified on a real iPhone:** whether iOS lets the mic restart after speech without a tap, and whether speech recognition works while the camera is open. Fallbacks exist (tap «تكلّم», tap the preview, «خلاص، كمّل»). Ask him how it behaved.
 
+### ⚠️ Voice experiments of 2026-11-06 were REVERTED (his decision, 17:48)
+- The app (src/app.html, index.html) is back to yesterday's working version (commit 3cb89c1): phone voice (Majed) as before, original sentences («وش», «بدأت زيارة الساعة…», «سجّلت: …», summary with departure time).
+- Why: Grady clips → earpiece + recognizer deaf after the mic on iPhone Safari; Plan B (best phone voice + picker) still choppy and delayed, and he could not hear a difference. He wants to stop spending time on voice in the web app and revisit it in the native app («البرنامج المطور»).
+- All of today's work is kept in branch `backup-2026-11-06d` (clips player, Plan B voice picker) and documented in the three sections below. Those sections describe that branch, NOT the current app.
+
 ### Voice — current state (Plan B, 2026-11-06 evening) — READ THIS FIRST
 - **The recorded Grady clips are OFF on the web (`VA_CLIPS=false`).** Second field test on his iPhone: the first two sentences played, then Safari moved the clips to the earpiece once the mic had been used, and the recognizer stopped hearing him («حبشان الشرقية» several times; he finished with the on-screen chips). This is Safari's handling of `<audio>` + mic in a web app, not fixable from the page. The phone voice (`speechSynthesis`) is not affected — it worked with the mic in the morning.
 - `speak()` now goes straight to `speakTTS()`. `vaVoice()` picks the best Arabic voice Safari exposes (Premium/«استثنائي» > Enhanced/«محسّن» > compact; ar-AE > ar-SA), or the one he chose in Settings (`S.settings.vaVoice` = voiceURI). `vaRate()` = `S.settings.vaRate` (أبطأ 0.9 / عادي 1 / أسرع 1.1).
