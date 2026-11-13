@@ -1221,7 +1221,8 @@ function getNote(){return((S.settings.reportNotes||{})[rangeKey()])||""}
 function setNote(t){S.settings.reportNotes=S.settings.reportNotes||{};S.settings.reportNotes[rangeKey()]=t;saveSettingsSoon()}
 function noteTarget(){
   if(S.range==="week"||S.range==="last")return{sheet:"sheet3",row:77,label:"تنكتب في خانة الملاحظات بالتقرير الأسبوعي داخل ملف الإكسل."};
-  if(S.range==="month")return{sheet:"sheet4",row:63,label:"تنكتب في خانة الملاحظات بالتقرير الشهري داخل ملف الإكسل."};
+  const[ra,rb]=rangeDates();const oneMonth=S.range==="custom"&&ra.slice(0,7)===rb.slice(0,7);
+  if(S.range==="month"||oneMonth)return{sheet:"sheet4",row:63,label:"تنكتب في خانة الملاحظات بالتقرير الشهري داخل ملف الإكسل."};
   return{sheet:"sheet5",row:87,label:"تنكتب في خانة الملاحظات بالتقرير الدوري داخل ملف الإكسل."}}
 function rowsText(list,max){const out=[];
   for(const v of sortVisits(list))for(const o of effObs(v))out.push([v.date,DAYS[parseISO(v.date).getDay()],v.area||"-",v.site||"-",o.type||NO_OBS,o.type===NO_OBS?A_NONE:(o.action||A_OBS),(isSurv(v)?svDesc(v):(o.desc||"")).replace(/\s+/g," ").slice(0,160),o.photos.length+" صور"].join(" | "));
