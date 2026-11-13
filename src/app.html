@@ -197,6 +197,8 @@ ol.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;g
 :root[data-theme="dark"]{--sv:#B7A2EC;--sv-soft:#2A2340}
 .pill.surv{background:var(--sv-soft);color:var(--sv)}
 .pill.duty{background:#E3EAF7;color:#1E3A8A}
+.pill.am{background:#FFF1CC;color:#6B4A00}
+.pill.pm{background:#E6E4F7;color:#3B3486}
 .pill.review{background:#FFE0B2;color:#9A3412}
 .inp.ro{background:var(--bg,#f4f6f5);color:inherit;display:flex;align-items:center;min-height:44px}
 .day-st{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 0;border-top:1px solid rgba(0,0,0,.06)}
@@ -277,6 +279,8 @@ const AREA_BOX={
   "السلع":[23.88,24.15,51.55,51.95]
 };
 const REVIEW="يحتاج مراجعة";
+/* shift from the arrival time (his rule 2026-11-13): up to 16:00 = صباحية, from 16:01 = مسائية. Same rule as Excel column Y. */
+const shiftOf=v=>!v.arrival?"":(v.arrival>"16:00"?"مسائية":"صباحية");
 function geoIssue(v){
   if(!v.lat||!v.lng)return "بدون إحداثية";
   if(v.geo==="paste")return "إحداثية مدخلة يدويًا";
@@ -432,6 +436,7 @@ function renderTabs(){
 function visitTags(v){const s=stats([v]);const t=[];if(v.src==="siri"||v.src==="voice")t.push('<span class="pill siri">صوتي</span>');
   if(v.status==="open")t.push('<span class="pill live">جارية</span>');
   if(v.date&&isWeekend(v.date))t.push('<span class="pill duty">مناوب</span>');
+  if(shiftOf(v))t.push('<span class="pill '+(shiftOf(v)==="مسائية"?"pm":"am")+'">'+shiftOf(v)+'</span>');
   if(v.status!=="open"&&geoIssue(v))t.push('<span class="pill review">'+REVIEW+'</span>');
   if(isSurv(v)){t.push('<span class="pill surv">معاينة</span>');return t.join("")}
   if(s.viol)t.push(`<span class="pill viol">مخالفة${s.viol>1?" ×"+s.viol:""}</span>`);
@@ -1283,6 +1288,8 @@ function autoSummary(){
     if(d0<=d1){const parts=[["ميداني",c.f],["مكتب",c.o],["اجتماع",c.m],["إجازة",c.l],["غير محدد",c.u]].filter(x=>x[1]).map(x=>x[0]+" "+x[1]);
       D.push("أيام الدوام"+(d0>from?" (من "+fmt(d0)+")":"")+": "+(parts.length?parts.join("، "):"لا يوجد")+".");
       if(c.w)D.push("المناوبة في عطلة نهاية الأسبوع: "+n(c.w,"يوم واحد","يومان","أيام","يومًا")+".")}}
+  {const am=list.filter(v=>shiftOf(v)==="صباحية").length,pm=list.filter(v=>shiftOf(v)==="مسائية").length;
+    if(am||pm)D.push("الزيارات حسب الفترة: صباحية "+am+"، مسائية "+pm+" (بعد الساعة 4 العصر).")}
   const R=[];const pair=cnt(obs.map(o=>o.area+"|"+o.type)).filter(([,c])=>c>=2);
   for(const[k]of pair.slice(0,2)){const[ar,ty]=k.split("|");R.push(`تكثيف الدوريات في ${ar} للحد من تكرار «${ty}».`)}
   if(st.only>=2)R.push("تنفيذ زيارات في أوقات مختلفة لمواقع المشاهدات دون مخالف، لضبط المخالفين.");

@@ -178,6 +178,7 @@ cols = [  # (header, width, kind)  kind: in = input, fx = formula, hid = helper
     ("اليوم", 10, "fx"), ("الخريطة", 12, "fx"), ("الصور", 14, "fx"),
     ("الشهر", 7, "hid"), ("السنة", 7, "hid"), ("بداية الأسبوع", 11, "hid"), ("زيارة جديدة", 7, "hid"),
     ("منطقة جديدة باليوم", 7, "hid"), ("مشاهدة", 7, "hid"), ("مخالفة", 7, "hid"), ("ترتيب الأسبوع", 7, "hid"),
+    ("الفترة", 10, "fx"),   # Y: shows right after P because Q–X are hidden
 ]
 banner(ws, "A1:P1", "سجل الزيارات التفتيشية")
 ws["A2"] = ("السجل يتعبّى من التطبيق: تقدر تعدّل الصفوف المسجلة، والصفوف الفاضية مقفولة لأن الزيارة تنسجل من الميدان بس. الأعمدة الرمادية تُحسب تلقائيًا." if CLEAN else
@@ -224,8 +225,11 @@ for i in range(N):
     ws.cell(r, 22, f'=IF(OR($B{r}="",$G{r}="",$G{r}="لا توجد مشاهدات",$G{r}="معاينة مزرعة"),0,1)')
     ws.cell(r, 23, f'=IF(AND($B{r}<>"",$I{r}="تم تحرير مخالفة"),1,0)')
     ws.cell(r, 24, f'=IF($B{r}="","",IF($S{r}=WkStart,COUNTIF($S${R0}:$S{r},WkStart),""))')
+    # shift from the arrival time (his rule 2026-11-13): up to 16:00 = صباحية, from 16:01 = مسائية
+    ws.cell(r, 25, f'=IF(OR($B{r}="",$E{r}=""),"",IF($E{r}*1440>960.5,"مسائية","صباحية"))')
 style(ws, f"A{R0}:P{R1}", f(10), None, RIGHT)
 style(ws, f"Q{R0}:X{R1}", f(9, False, "888888"), fill(GREY), CENTER)
+style(ws, f"Y{R0}:Y{R1}", f(10), fill("F5F7F8"), CENTER)
 for r in range(R0, R1 + 1):
     ws.cell(r, 2).number_format = DATE_FMT
     ws.cell(r, 5).number_format = "hh:mm"; ws.cell(r, 6).number_format = "hh:mm"
@@ -238,7 +242,7 @@ for r in range(R0, R1 + 1):
 for L in "QRSTUVWX":
     ws.column_dimensions[L].hidden = True
 ws.freeze_panes = "E5"
-ws.auto_filter.ref = f"A4:P{R1}"
+ws.auto_filter.ref = f"A4:Y{R1}"
 
 dv_area = DataValidation(type="list", formula1="=AreaList", allow_blank=True, showErrorMessage=True,
                          errorStyle="warning", errorTitle="منطقة غير موجودة",
