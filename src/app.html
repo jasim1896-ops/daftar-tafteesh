@@ -1270,6 +1270,17 @@ function autoSummary(){
   if(st.clean&&st.obs)P.push(`وجاءت ${n(st.clean,"زيارة واحدة","زيارتان","زيارات","زيارة")} دون مشاهدات.`);
   if(st.surv)P.push(`كما نُفذت ${n(st.surv,"معاينة مزرعة واحدة","معاينتا مزارع","معاينات مزارع","معاينة مزرعة")} لطلبات حفر آبار.`);
   if(review)P.push(`وتوجد ${n(review,"زيارة واحدة","زيارتان","زيارات","زيارة")} تحتاج مراجعة لعدم تطابق الإحداثيات مع المنطقة المسجلة.`);
+  /* working days of the period (Mon–Fri, from the first day the app was used, up to today):
+     field = a finished visit; otherwise the status he chose (مكتب / اجتماع / إجازة) or «غير محدد».
+     Weekend days with a visit = duty. For whoever evaluates the inspector. */
+  const D=[];{const first=S.visits.reduce((m,v)=>v.date<m?v.date:m,S.settings.since||today());
+    const d0=from>first?from:first,d1=to<today()?to:today(),busy=new Set(list.map(v=>v.date)),ds=S.settings.dayStatus||{};
+    const c={f:0,o:0,m:0,l:0,u:0,w:0};
+    for(let d=d0;d<=d1;d=addDays(d,1)){if(isWeekend(d)){if(busy.has(d))c.w++;continue}
+      if(busy.has(d))c.f++;else if(ds[d]==="مكتب")c.o++;else if(ds[d]==="اجتماع")c.m++;else if(ds[d]==="إجازة")c.l++;else c.u++}
+    if(d0<=d1){const parts=[["ميداني",c.f],["مكتب",c.o],["اجتماع",c.m],["إجازة",c.l],["غير محدد",c.u]].filter(x=>x[1]).map(x=>x[0]+" "+x[1]);
+      D.push("أيام الدوام"+(d0>from?" (من "+fmt(d0)+")":"")+": "+(parts.length?parts.join("، "):"لا يوجد")+".");
+      if(c.w)D.push("المناوبة في عطلة نهاية الأسبوع: "+n(c.w,"يوم واحد","يومان","أيام","يومًا")+".")}}
   const R=[];const pair=cnt(obs.map(o=>o.area+"|"+o.type)).filter(([,c])=>c>=2);
   for(const[k]of pair.slice(0,2)){const[ar,ty]=k.split("|");R.push(`تكثيف الدوريات في ${ar} للحد من تكرار «${ty}».`)}
   if(st.only>=2)R.push("تنفيذ زيارات في أوقات مختلفة لمواقع المشاهدات دون مخالف، لضبط المخالفين.");
@@ -1277,7 +1288,7 @@ function autoSummary(){
   if(review)R.push("مراجعة الزيارات المعلّمة «يحتاج مراجعة» والتحقق من إحداثياتها.");
   if(!st.obs)R.push("الاستمرار في الجولات الدورية للمحافظة على مستوى الامتثال البيئي.");
   if(!R.length)R.push("الاستمرار في الجولات الدورية ومتابعة المواقع التي رُصدت فيها مشاهدات.");
-  return P.join(" ")+"\n\nالتوصيات:\n"+R.slice(0,4).map((r,i)=>(i+1)+". "+r).join("\n");
+  return P.join(" ")+(D.length?"\n"+D.join(" "):"")+"\n\nالتوصيات:\n"+R.slice(0,4).map((r,i)=>(i+1)+". "+r).join("\n");
 }
 async function aiSummary(){
   if(S.aiBusy)return;const sm=await ai();if(!sm){render(true);return}
