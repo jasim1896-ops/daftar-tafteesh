@@ -514,7 +514,8 @@ function vExport(){
   <div class="card stack">
     <h3>ملخص وتوصيات المفتش</h3>
     <div class="small">${esc(noteTarget().label)}</div>
-    <textarea class="inp" id="repNote" placeholder="اكتبها بنفسك أو خل المساعد يكتبها من بيانات الفترة">${esc(getNote())}</textarea>
+    <textarea class="inp" id="repNote" placeholder="اكتبها بنفسك، أو اضغط «اكتب الملخص تلقائيًا»">${esc(getNote())}</textarea>
+    <button class="btn block ${S.armed==="autoSum"?"armed":""}" data-act="autoSum" ${!l.some(v=>v.status!=="open")?"disabled":""}>${S.armed==="autoSum"?"تأكيد: استبدال النص الحالي":"اكتب الملخص تلقائيًا"}</button>
     ${S.aiOff?"":`<button class="btn block" data-act="aiSummary" ${!l.length||S.aiBusy?"disabled":""}>${S.aiBusy==="sum"?'<span class="spin"></span> المساعد يكتب…':"اكتب الملخص بالمساعد"}</button>`}
   </div>
   <div class="card stack">
@@ -1238,6 +1239,32 @@ async function askAI(q){
   catch(e){S.chat[idx].content=(e&&e.text)||aiErr(e)||"توقف."}
   S.chat[idx].pending=false;S.aiBusy=false;render(true);scrollChat();
 }
+/* «ملخص وتوصيات المفتش» without AI: a formal paragraph built from the period's finished visits,
+   plus rule-based recommendations. Works offline; nothing leaves the phone. */
+function autoSummary(){
+  const list=inRange().filter(v=>v.status!=="open");if(!list.length)return "";
+  const[a,b]=rangeDates(),from=S.range==="all"?list[0].date:a,to=S.range==="all"?list[list.length-1].date:b;
+  const st=stats(list),fmt=d=>d.split("-").reverse().join("/"),n=(x,one,two,many,sing)=>x===1?one:x===2?two:x<=10?x+" "+many:x+" "+sing;
+  const cnt=(arr)=>{const m=new Map();for(const k of arr)m.set(k,(m.get(k)||0)+1);return[...m].sort((x,y)=>y[1]-x[1])};
+  const areas=cnt(list.map(v=>v.area||"غير محددة"));
+  const obs=[];for(const v of list)if(!isSurv(v))for(const o of effObs(v))if(o.type&&o.type!==NO_OBS)obs.push({type:o.type,area:v.area||"",act:o.action});
+  const types=cnt(obs.map(o=>o.type));const review=list.filter(v=>geoIssue(v)).length;
+  const P=[];
+  P.push(`خلال الفترة من ${fmt(from)} إلى ${fmt(to)} نُفذت ${n(st.visits,"زيارة ميدانية واحدة","زيارتان ميدانيتان","زيارات ميدانية","زيارة ميدانية")} شملت ${areas.map(([k,c])=>k+" ("+c+")").join("، ")}.`);
+  if(st.obs)P.push(`رُصدت ${n(st.obs,"مشاهدة واحدة","مشاهدتان","مشاهدات","مشاهدة")}، ${st.viol?"حُررت فيها "+n(st.viol,"مخالفة واحدة","مخالفتان","مخالفات","مخالفة"):"لم تُحرر فيها مخالفات"}${st.only?"، و"+n(st.only,"مشاهدة واحدة","مشاهدتان","مشاهدات","مشاهدة")+" دون وجود المخالف":""}. وكانت أكثر المشاهدات تكرارًا: ${types.slice(0,3).map(([k,c])=>k+" ("+c+")").join("، ")}.`);
+  else P.push("لم تُرصد أي مخالفات أو مشاهدات بيئية خلال الزيارات.");
+  if(st.clean&&st.obs)P.push(`وجاءت ${n(st.clean,"زيارة واحدة","زيارتان","زيارات","زيارة")} دون مشاهدات.`);
+  if(st.surv)P.push(`كما نُفذت ${n(st.surv,"معاينة مزرعة واحدة","معاينتا مزارع","معاينات مزارع","معاينة مزرعة")} لطلبات حفر آبار.`);
+  if(review)P.push(`وتوجد ${n(review,"زيارة واحدة","زيارتان","زيارات","زيارة")} تحتاج مراجعة لعدم تطابق الإحداثيات مع المنطقة المسجلة.`);
+  const R=[];const pair=cnt(obs.map(o=>o.area+"|"+o.type)).filter(([,c])=>c>=2);
+  for(const[k]of pair.slice(0,2)){const[ar,ty]=k.split("|");R.push(`تكثيف الدوريات في ${ar} للحد من تكرار «${ty}».`)}
+  if(st.only>=2)R.push("تنفيذ زيارات في أوقات مختلفة لمواقع المشاهدات دون مخالف، لضبط المخالفين.");
+  if(st.viol)R.push("متابعة المخالفات المحررة والتأكد من إزالة أسبابها.");
+  if(review)R.push("مراجعة الزيارات المعلّمة «يحتاج مراجعة» والتحقق من إحداثياتها.");
+  if(!st.obs)R.push("الاستمرار في الجولات الدورية للمحافظة على مستوى الامتثال البيئي.");
+  if(!R.length)R.push("الاستمرار في الجولات الدورية ومتابعة المواقع التي رُصدت فيها مشاهدات.");
+  return P.join(" ")+"\n\nالتوصيات:\n"+R.slice(0,4).map((r,i)=>(i+1)+". "+r).join("\n");
+}
 async function aiSummary(){
   if(S.aiBusy)return;const sm=await ai();if(!sm){render(true);return}
   const list=inRange();if(!list.length)return;const[a,b]=rangeDates();const st=stats(list);
@@ -1681,7 +1708,7 @@ document.addEventListener("click",async e=>{
   if(tab){S.view=tab.dataset.tab;S.armed=null;render();return}
   const b=e.target.closest("[data-act]");if(!b)return;
   const act=b.dataset.act,v=visit(S.editId);
-  if(S.armed&&!["wipe","delVisit","rmObs","delOpen"].includes(act))S.armed=null;
+  if(S.armed&&!["wipe","delVisit","rmObs","delOpen","autoSum"].includes(act))S.armed=null;
   switch(act){
     case "new":return newVisit();
     case "svNew":return newSurvey();
@@ -1759,6 +1786,10 @@ document.addEventListener("click",async e=>{
     case "askSug":return askAI(b.dataset.q);
     case "clearChat":S.chat=[];return render(true);
     case "aiSummary":return aiSummary();
+    case "autoSum":{const t=$("#repNote"),cur=((t&&t.value)||getNote()).trim();
+      if(cur&&S.armed!=="autoSum"){S.armed="autoSum";render(true);setTimeout(()=>{if(S.armed==="autoSum"){S.armed=null;render(true)}},4000);return}
+      S.armed=null;const txt=autoSummary();if(!txt)return toast("ما فيه زيارات منتهية في هالفترة");
+      setNote(txt);render(true);return toast("انكتب الملخص، راجعه وعدّل إذا تبي")}
     case "formal":return aiFormal(b.dataset.oid);
     case "undoFormal":{if(!v)return;const o=v.obs.find(x=>x.id===b.dataset.oid);if(o&&S.undo[o.id]!=null){o.desc=S.undo[o.id];delete S.undo[o.id];saveVisit(v);render(true)}return}
     case "wipe":if(S.armed!=="wipe"){S.armed="wipe";render(true);setTimeout(()=>{if(S.armed==="wipe"){S.armed=null;render(true)}},5000);return}
