@@ -281,6 +281,12 @@ function geoIssue(v){
   if(v.geo==="paste")return "إحداثية مدخلة يدويًا";
   const b=AREA_BOX[v.area];if(!b)return "";
   const a=+v.lat,o=+v.lng;return(a<b[0]||a>b[1]||o<b[2]||o>b[3])?"الموقع لا يطابق المنطقة":""}
+/* periodic report periods — names must match the Excel «التقرير الدوري» list (PERIODS in make_xlsx.py) */
+const PERIODS=[["الربع الأول",1,3],["الربع الثاني",4,6],["الربع الثالث",7,9],["الربع الرابع",10,12],["النصف الأول",1,6],["النصف الثاني",7,12],["التقرير السنوي",1,12]];
+const curPeriod=()=>{const y=+(S.pYear||today().slice(0,4)),p=PERIODS.find(x=>x[0]===S.pName)||PERIODS[Math.floor((+today().slice(5,7)-1)/3)];return{y,p}};
+/* the smallest period of one year that holds [a,b] (for a custom range that spans months) */
+function periodFor(a,b){if(a.slice(0,4)!==b.slice(0,4))return null;const m1=+a.slice(5,7),m2=+b.slice(5,7);
+  return PERIODS.filter(p=>p[1]<=m1&&p[2]>=m2).sort((x,y)=>(x[2]-x[1])-(y[2]-y[1]))[0]||null}
 const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const IC={
   plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
@@ -494,17 +500,21 @@ function rangeDates(){const d=today();
     case "last":{const ws=addDays(weekStart(d),-7);return[ws,addDays(ws,6)]}
     case "month":{const x=parseISO(d);return[isoDate(new Date(x.getFullYear(),x.getMonth(),1)),isoDate(new Date(x.getFullYear(),x.getMonth()+1,0))]}
     case "custom":return[S.from||d,S.to||d];
+    case "period":{const{y,p}=curPeriod();return[isoDate(new Date(y,p[1]-1,1)),isoDate(new Date(y,p[2],0))]}
     default:return["0000-01-01","9999-12-31"]}}
 function inRange(){const[a,b]=rangeDates();return sortVisits(S.visits.filter(v=>v.date>=a&&v.date<=b))}
 /* only finished visits go into the Excel file; an open one is still being recorded */
 const doneVisits=()=>S.visits.filter(v=>v.status!=="open");
 function vExport(){
   const l=inRange(),s=stats(l),open=l.filter(v=>v.status==="open").length;
-  const opts=[["week","هذا الأسبوع"],["last","الأسبوع الماضي"],["month","هذا الشهر"],["all","الكل"],["custom","فترة محددة"]];
+  const opts=[["week","هذا الأسبوع"],["last","الأسبوع الماضي"],["month","هذا الشهر"],["period","ربع / نصف / سنة"],["all","الكل"],["custom","فترة محددة"]];
+  const years=[];{const y0=+(S.visits.reduce((m,v)=>v.date<m?v.date:m,today())).slice(0,4),y1=+today().slice(0,4);for(let y=y1;y>=y0;y--)years.push(y)}
+  const cp=curPeriod();
   return `<h2 class="sec">التقارير والتصدير</h2>
   <div class="card stack">
     <h3>الفترة</h3>
     <div class="chips" role="group" aria-label="الفترة">${opts.map(([k,t])=>`<button class="chip" data-act="range" data-v="${k}" aria-pressed="${S.range===k}">${t}</button>`).join("")}</div>
+    ${S.range==="period"?`<div class="grid2"><label class="f">السنة<select class="inp" id="pYear">${years.map(y=>`<option ${y===cp.y?"selected":""}>${y}</option>`).join("")}</select></label><label class="f">الفترة<select class="inp" id="pName">${PERIODS.map(p=>`<option ${p===cp.p?"selected":""}>${p[0]}</option>`).join("")}</select></label></div>`:""}
     ${S.range==="custom"?`<div class="grid2"><label class="f">من<input class="inp" type="date" id="rFrom" value="${esc(S.from||today())}"></label><label class="f">إلى<input class="inp" type="date" id="rTo" value="${esc(S.to||today())}"></label></div>`:""}
     ${S.range!=="all"&&S.range!=="custom"?`<div class="small muted">${esc(longDate(rangeDates()[0]))} – ${esc(longDate(rangeDates()[1]))}</div>`:""}
     ${statTiles(s,"ملخص الفترة")}
@@ -909,7 +919,8 @@ async function fillCachedValues(zip){
 function reportPeriod(){
   const[a]=rangeDates();const anchor=(S.range==="all"||a<"1000")?today():a;
   const d=parseISO(anchor);const q=Math.floor(d.getMonth()/3);
-  return{week:excelDate(anchor),year:d.getFullYear(),month:MONTHS[d.getMonth()],period:["الربع الأول","الربع الثاني","الربع الثالث","الربع الرابع"][q]}}
+  const[ra,rb]=rangeDates();const pp=S.range==="period"?curPeriod().p:(S.range==="custom"?periodFor(ra,rb):null);
+  return{week:excelDate(anchor),year:d.getFullYear(),month:MONTHS[d.getMonth()],period:pp?pp[0]:["الربع الأول","الربع الثاني","الربع الثالث","الربع الرابع"][q]}}
 async function buildWorkbook(){
   if(!TPL_B64)throw new Error("tpl");
   const zip=await JSZip.loadAsync(TPL_B64,{base64:true});
@@ -1207,7 +1218,8 @@ function noteTarget(){
   if(S.range==="week"||S.range==="last")return{sheet:"sheet3",row:77,label:"تنكتب في خانة الملاحظات بالتقرير الأسبوعي داخل ملف الإكسل."};
   const[ra,rb]=rangeDates();const oneMonth=S.range==="custom"&&ra.slice(0,7)===rb.slice(0,7);
   if(S.range==="month"||oneMonth)return{sheet:"sheet4",row:63,label:"تنكتب في خانة الملاحظات بالتقرير الشهري داخل ملف الإكسل."};
-  return{sheet:"sheet5",row:87,label:"تنكتب في خانة الملاحظات بالتقرير الدوري داخل ملف الإكسل."}}
+  const pp=S.range==="period"?curPeriod().p:(S.range==="custom"?periodFor(ra,rb):null);
+  return{sheet:"sheet5",row:87,label:"تنكتب في خانة الملاحظات بالتقرير الدوري"+(pp?" («"+pp[0]+"»)":"")+" داخل ملف الإكسل."}}
 function rowsText(list,max){const out=[];
   for(const v of sortVisits(list))for(const o of effObs(v))out.push([v.date,DAYS[parseISO(v.date).getDay()],v.area||"-",v.site||"-",o.type||NO_OBS,o.type===NO_OBS?A_NONE:(o.action||A_OBS),(isSurv(v)?svDesc(v):(o.desc||"")).replace(/\s+/g," ").slice(0,160),o.photos.length+" صور"].join(" | "));
   return out.slice(-(max||800)).join("\n")}
@@ -1251,7 +1263,8 @@ function autoSummary(){
   const obs=[];for(const v of list)if(!isSurv(v))for(const o of effObs(v))if(o.type&&o.type!==NO_OBS)obs.push({type:o.type,area:v.area||"",act:o.action});
   const types=cnt(obs.map(o=>o.type));const review=list.filter(v=>geoIssue(v)).length;
   const P=[];
-  P.push(`خلال الفترة من ${fmt(from)} إلى ${fmt(to)} نُفذت ${n(st.visits,"زيارة ميدانية واحدة","زيارتان ميدانيتان","زيارات ميدانية","زيارة ميدانية")} شملت ${areas.map(([k,c])=>k+" ("+c+")").join("، ")}.`);
+  const pn=S.range==="period"?curPeriod():null;
+  P.push(`خلال ${pn?(pn.p[0]==="التقرير السنوي"?"عام "+pn.y:pn.p[0]+" من عام "+pn.y)+" (من "+fmt(from)+" إلى "+fmt(to)+")":"الفترة من "+fmt(from)+" إلى "+fmt(to)} نُفذت ${n(st.visits,"زيارة ميدانية واحدة","زيارتان ميدانيتان","زيارات ميدانية","زيارة ميدانية")} شملت ${areas.map(([k,c])=>k+" ("+c+")").join("، ")}.`);
   if(st.obs)P.push(`رُصدت ${n(st.obs,"مشاهدة واحدة","مشاهدتان","مشاهدات","مشاهدة")}، ${st.viol?"حُررت فيها "+n(st.viol,"مخالفة واحدة","مخالفتان","مخالفات","مخالفة"):"لم تُحرر فيها مخالفات"}${st.only?"، و"+n(st.only,"مشاهدة واحدة","مشاهدتان","مشاهدات","مشاهدة")+" دون وجود المخالف":""}. وكانت أكثر المشاهدات تكرارًا: ${types.slice(0,3).map(([k,c])=>k+" ("+c+")").join("، ")}.`);
   else P.push("لم تُرصد أي مخالفات أو مشاهدات بيئية خلال الزيارات.");
   if(st.clean&&st.obs)P.push(`وجاءت ${n(st.clean,"زيارة واحدة","زيارتان","زيارات","زيارة")} دون مشاهدات.`);
@@ -1811,6 +1824,8 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
   const t=e.target,v=visit(S.editId);
   if(t.id==="rFrom"){S.from=t.value;return render(true)}
+  if(t.id==="pYear"){S.pYear=t.value;return render(true)}
+  if(t.id==="pName"){S.pName=t.value;return render(true)}
   if(t.id==="rTo"){S.to=t.value;return render(true)}
   if(t.id==="coSel"&&v&&v.sv){if(t.value==="__new"){S.addingCo=true;return render(true)}v.sv.company=t.value;saveVisit(v);return}
   if(t.dataset.sf&&t.dataset.num&&v&&v.sv)return render(true);
