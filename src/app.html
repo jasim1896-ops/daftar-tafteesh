@@ -264,6 +264,7 @@ const DAYS=["الأحد","الاثنين","الثلاثاء","الأربعاء",
 const isWeekend=d=>{const g=parseISO(d).getDay();return g===0||g===6};
 /* a working day without visits: the inspector says what it was (shown in Excel, sheet «سجل الأيام») */
 const DAY_ST=["اجتماع","مكتب","إجازة"];
+const DAY_WINDOW=7; /* days back (today included) in which a day status can still be set or changed */
 /* rough bounding boxes [latMin,latMax,lngMin,lngMax] used only to flag a visit for review when its
    coordinates fall outside the area picked. Approximate on purpose — adjust here if a real site falls outside. */
 const AREA_BOX={
@@ -443,17 +444,18 @@ function visitRow(v,showDate){const ob=effObs(v);const sum=isSurv(v)?[SURV,v.sv.
 function statTiles(s,label){return `<div class="stats" aria-label="${esc(label)}"><div class="stat v"><b>${s.visits}</b><span>الزيارات</span></div><div class="stat o"><b>${s.obs}</b><span>المشاهدات</span></div><div class="stat x"><b>${s.viol}</b><span>المخالفات</span></div></div>`}
 
 /* ---------------- working days without visits ---------------- */
-/* Mon–Fri days of the last two weeks (up to today) with no visit at all. The inspector marks each one
+/* Mon–Fri days of the last 7 days (today included) with no visit at all — his rule (2026-11-13): a status can be set
+   within one week only; after that the day stays as it is (empty = «غير محدد»). The inspector marks each one
    اجتماع / مكتب / إجازة. Tapping the chosen status again clears it. Only the status can be set:
    a visit can never be added to a past day. */
 function emptyWorkDays(){const t=today(),busy=new Set(S.visits.map(v=>v.date));
   const first=S.visits.reduce((m,v)=>v.date<m?v.date:m,S.settings.since||t);const out=[];
-  for(let i=13;i>=0;i--){const d=addDays(t,-i);if(d<first||isWeekend(d)||busy.has(d))continue;out.push(d)}
+  for(let i=DAY_WINDOW-1;i>=0;i--){const d=addDays(t,-i);if(d<first||isWeekend(d)||busy.has(d))continue;out.push(d)}
   return out.reverse()}
 function dayStatusCard(){const days=emptyWorkDays();if(!days.length)return "";const m=S.settings.dayStatus||{};
   const pending=days.filter(d=>!m[d]).length;
   return `<details class="card" ${pending?"open":""}><summary><b>أيام دوام بدون زيارات</b> <span class="small muted">${pending?pending+" بدون تحديد":"كلها محددة"}</span></summary>
-  <div class="small muted" style="margin:6px 0">اليوم اللي ما فيه زيارة، حدد شو كان عندك. يظهر في ملف الإكسل.</div>
+  <div class="small muted" style="margin:6px 0">اليوم اللي ما فيه زيارة، حدد شو كان عندك. يظهر في ملف الإكسل. التعديل متاح خلال أسبوع بس، وبعدها اليوم يظل «غير محدد».</div>
   ${days.map(d=>`<div class="day-st"><span>${esc(DAYS[parseISO(d).getDay()])} ${esc(shortDate(d))}${d===today()?" (اليوم)":""}</span>
     <div class="chips">${DAY_ST.map(x=>`<button class="chip" data-act="dayst" data-d="${d}" data-v="${x}" aria-pressed="${m[d]===x}">${x}</button>`).join("")}</div></div>`).join("")}
   </details>`}
@@ -1752,7 +1754,7 @@ document.addEventListener("click",async e=>{
     case "delOpen":{const x=visit(b.dataset.id);if(!x)return;const k="del"+x.id;
       if(S.armed!==k){S.armed=k;render(true);setTimeout(()=>{if(S.armed===k){S.armed=null;render(true)}},4000);return}
       await removeVisit(x);S.armed=null;toast("تم حذف الزيارة");return render(true)}
-    case "dayst":{const d=b.dataset.d,st=b.dataset.v;const m=S.settings.dayStatus=S.settings.dayStatus||{};
+    case "dayst":{const d=b.dataset.d,st=b.dataset.v;if(d<addDays(today(),-(DAY_WINDOW-1)))return toast("مر عليه أكثر من أسبوع، ما يتعدل");const m=S.settings.dayStatus=S.settings.dayStatus||{};
       if(m[d]===st)delete m[d];else m[d]=st;await saveSettings();return render(true)}
     case "edit":S.view="visit";S.editId=b.dataset.id;S.addingSite=false;S.addingCo=false;S.addingType=null;S.armed=null;return render();
     case "back":S.view="today";S.editId=null;S.armed=null;return render();
