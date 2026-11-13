@@ -1,6 +1,7 @@
 import datetime as dt
+from copy import copy
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, Protection
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.formula import ArrayFormula
@@ -67,6 +68,7 @@ ws_w = wb.create_sheet("التقرير الأسبوعي")
 ws_m = wb.create_sheet("التقرير الشهري")
 ws_p = wb.create_sheet("التقرير الدوري")
 ws_s = wb.create_sheet("الإعدادات")
+ws_d = wb.create_sheet("سجل الأيام")   # sheet7: status of working days without visits (filled by the app)
 for ws in wb.worksheets:
     ws.sheet_view.rightToLeft = True
     ws.sheet_view.showGridLines = False
@@ -178,7 +180,8 @@ cols = [  # (header, width, kind)  kind: in = input, fx = formula, hid = helper
     ("منطقة جديدة باليوم", 7, "hid"), ("مشاهدة", 7, "hid"), ("مخالفة", 7, "hid"), ("ترتيب الأسبوع", 7, "hid"),
 ]
 banner(ws, "A1:P1", "سجل الزيارات التفتيشية")
-ws["A2"] = "الأعمدة الخضراء تُعبّأ (يدويًا أو بلصق ما يصدّره التطبيق ابتداءً من عمود التاريخ). الأعمدة الرمادية تُحسب تلقائيًا ولا تحتاج تعديل."
+ws["A2"] = ("السجل يتعبّى من التطبيق: تقدر تعدّل الصفوف المسجلة، والصفوف الفاضية مقفولة لأن الزيارة تنسجل من الميدان بس. الأعمدة الرمادية تُحسب تلقائيًا." if CLEAN else
+            "الأعمدة الخضراء تُعبّأ (يدويًا أو بلصق ما يصدّره التطبيق ابتداءً من عمود التاريخ). الأعمدة الرمادية تُحسب تلقائيًا ولا تحتاج تعديل.")
 ws.merge_cells("A2:P2"); ws["A2"].font = f(10, False, "555555"); ws["A2"].alignment = RIGHT
 ws.merge_cells("Q3:X3"); ws["Q3"] = "أعمدة مساعدة — لا تعدّلها"
 ws["Q3"].font = f(9, True, "777777"); ws["Q3"].alignment = CENTER
@@ -210,7 +213,7 @@ for i in range(N):
         for j, v in enumerate(sample[i]):
             ws.cell(r, 2 + j, v)
     ws.cell(r, 1, f'=IF($B{r}="","",ROW()-{R0-1})')
-    ws.cell(r, 14, f'=IF($B{r}="","",CHOOSE(WEEKDAY($B{r}),"الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"))')
+    ws.cell(r, 14, f'=IF($B{r}="","",CHOOSE(WEEKDAY($B{r}),"الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت")&IF(OR(WEEKDAY($B{r})=1,WEEKDAY($B{r})=7)," (مناوب)",""))')
     ws.cell(r, 15, f'=IF(OR($K{r}="",$L{r}=""),"",HYPERLINK("https://maps.google.com/?q="&$K{r}&","&$L{r},"عرض الموقع"))')
     ws.cell(r, 16, f'=IF(OR($B{r}="",N($J{r})=0),"",HYPERLINK(PhotoDir&"/"&YEAR($B{r})&"-"&TEXT(MONTH($B{r}),"00")&"-"&TEXT(DAY($B{r}),"00")&"_"&$D{r},"فتح الصور ("&$J{r}&")"))')
     ws.cell(r, 17, f'=IF($B{r}="","",MONTH($B{r}))')
@@ -257,6 +260,25 @@ ws.conditional_formatting.add(f"I{R0}:I{R1}", FormulaRule(formula=[f'$I{R0}="ت�
 ws.conditional_formatting.add(f"I{R0}:I{R1}", FormulaRule(formula=[f'$I{R0}="مشاهدة فقط"'], fill=fill("FFF1D6"), font=Font(name=FONT, color="8A5A00")))
 ws.conditional_formatting.add(f"I{R0}:I{R1}", FormulaRule(formula=[f'$I{R0}="لا يوجد"'], fill=fill("E3F2E8"), font=Font(name=FONT, color="1E5B3C")))
 ws.conditional_formatting.add(f"A{R0}:P{R1}", FormulaRule(formula=[f'$M{R0}="صف تجريبي — احذفه قبل البدء"'], fill=fill("F3E5F5")))
+ws.conditional_formatting.add(f"M{R0}:M{R1}", FormulaRule(formula=[f'LEFT($M{R0},12)="يحتاج مراجعة"'], fill=fill("FFE0B2"), font=Font(name=FONT, color="9A3412", bold=True)))
+
+# Protection (template used by the app only): rows the app fills are switched to the unlocked styles of the
+# reference row REF_ROW (hidden); every empty row stays locked, so a visit cannot be typed in by hand.
+PASSWORD = "daftar2026"
+REF_ROW = R1 + 2
+def protect(w):
+    w.protection.sheet = True
+    w.protection.password = PASSWORD
+    w.protection.autoFilter = False; w.protection.sort = False
+    w.protection.formatColumns = False; w.protection.formatRows = False
+if CLEAN:
+    for j in range(2, 14):
+        src = ws.cell(R0, j); c = ws.cell(REF_ROW, j)
+        c.font = copy(src.font); c.alignment = copy(src.alignment); c.border = copy(src.border)
+        c.number_format = src.number_format
+        c.protection = Protection(locked=False)
+    ws.row_dimensions[REF_ROW].hidden = True
+    protect(ws)
 
 def lname(n, col):
     name(n, f"{LOG}!${col}${R0}:${col}${R1}")
@@ -350,11 +372,13 @@ section(ws, "B11:I11", "ملخص أيام الأسبوع")
 header_row(ws, 12, [("B", "اليوم"), ("C", "التاريخ"), ("D", "المناطق"), ("E", "المواقع المزارة"),
                     ("F", "الزيارات"), ("G", "المشاهدات"), ("H", "المخالفات"), ("I", "دون مخالف")])
 days = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"]
+DAY_ST = "IF(ISNUMBER(MATCH(C{r},D_Date,0)),INDEX(D_Status,MATCH(C{r},D_Date,0)),\"\")"
 for i, d in enumerate(days):
     r = 13 + i
     ws[f"B{r}"] = d
     ws[f"C{r}"] = f"=WkStart+{i}"; ws[f"C{r}"].number_format = DATE_FMT
-    ws[f"D{r}"] = ArrayFormula(f"D{r}", f'=_xlfn.TEXTJOIN("، ",TRUE,IF((L_Date=C{r})*(L_NewArea=1),L_Area,""))')
+    # a working day without visits shows the status chosen in the app (اجتماع / مكتب / إجازة)
+    ws[f"D{r}"] = ArrayFormula(f"D{r}", f'=IF(F{r}=0,{DAY_ST.format(r=r)},_xlfn.TEXTJOIN("، ",TRUE,IF((L_Date=C{r})*(L_NewArea=1),L_Area,"")))')
     ws[f"E{r}"] = ArrayFormula(f"E{r}", f'=_xlfn.TEXTJOIN("، ",TRUE,IF((L_Date=C{r})*(L_NewVisit=1),L_Site,""))')
     ws[f"F{r}"] = f"=SUMIFS(L_NewVisit,L_Date,C{r})"
     ws[f"G{r}"] = f"=SUMIFS(L_Obs,L_Date,C{r})"
@@ -363,10 +387,25 @@ for i, d in enumerate(days):
     style(ws, f"B{r}:I{r}", f(10), fill(WHITE if i % 2 == 0 else "F6FAF7"), CENTER)
     ws[f"C{r}"].number_format = DATE_FMT
     ws.row_dimensions[r].height = 30
+# Saturday + Sunday in one row: «عطلة» or «مناوب» with the areas worked
 r = 18
+ws[f"B{r}"] = "السبت والأحد"
+ws[f"C{r}"] = "=WkStart+5"
+two = lambda rng: f"SUMIFS({rng},L_Date,C{r})+SUMIFS({rng},L_Date,C{r}+1)"
+ws[f"F{r}"] = "=" + two("L_NewVisit")
+ws[f"G{r}"] = "=" + two("L_Obs")
+ws[f"H{r}"] = "=" + two("L_Viol")
+ws[f"I{r}"] = f'=COUNTIFS(L_Date,C{r},L_Act,"مشاهدة فقط")+COUNTIFS(L_Date,C{r}+1,L_Act,"مشاهدة فقط")'
+ws[f"D{r}"] = ArrayFormula(f"D{r}", f'=IF(F{r}=0,"عطلة نهاية الأسبوع","مناوب: "&_xlfn.TEXTJOIN("، ",TRUE,IF(((L_Date=C{r})+(L_Date=C{r}+1))*(L_NewArea=1),L_Area,"")))')
+ws[f"E{r}"] = ArrayFormula(f"E{r}", f'=_xlfn.TEXTJOIN("، ",TRUE,IF(((L_Date=C{r})+(L_Date=C{r}+1))*(L_NewVisit=1),L_Site,""))')
+style(ws, f"B{r}:I{r}", f(10, False, "555555"), fill("EEF2F4"), CENTER)
+ws[f"C{r}"].number_format = DATE_FMT
+ws.row_dimensions[r].height = 30
+ws.conditional_formatting.add("D18", FormulaRule(formula=['$F$18>0'], font=Font(name=FONT, color="B3261E", bold=True)))
+r = 19
 ws[f"B{r}"] = "الإجمالي"; ws.merge_cells(f"B{r}:E{r}")
 for L in "FGHI":
-    ws[f"{L}{r}"] = f"=SUM({L}13:{L}17)"
+    ws[f"{L}{r}"] = f"=SUM({L}13:{L}18)"
 style(ws, f"B{r}:I{r}", f(11, True, GREEN), fill(LIGHT), CENTER)
 
 def type_table(ws, top, crit):
@@ -578,6 +617,33 @@ section(ws_m, "B62:I62", "ملاحظات المفتش")
 ws_m.merge_cells("B63:I63"); style(ws_m, "B63:I63", f(11, False, "1A3FA8"), fill(INPUT), Alignment(horizontal="right", vertical="top", wrap_text=True))
 ws_m.row_dimensions[63].height = 60
 
+# ------------------------------------------------------------------ day log (sheet7)
+ws = ws_d
+DN = 400
+banner(ws, "A1:E1", "سجل أيام الدوام بدون زيارات")
+ws["A2"] = "يتعبّى من التطبيق: يوم الدوام (الاثنين – الجمعة) اللي ما فيه زيارات، يحدد له المفتش: اجتماع أو مكتب أو إجازة. الشيت مقفول."
+ws.merge_cells("A2:E2"); ws["A2"].font = f(10, False, "555555"); ws["A2"].alignment = RIGHT
+for col, h, w in (("A", "م", 5), ("B", "التاريخ", 14), ("C", "اليوم", 12), ("D", "الحالة", 16), ("E", "", 4)):
+    ws.column_dimensions[col].width = w
+    if h:
+        c = ws[f"{col}4"]; c.value = h
+        c.font = f(11, True, WHITE); c.fill = fill(GREEN2); c.alignment = CENTER; c.border = BORDER
+for i in range(DN):
+    r = 5 + i
+    ws[f"A{r}"] = f'=IF($B{r}="","",ROW()-4)'
+    ws[f"B{r}"].number_format = DATE_FMT
+    ws[f"C{r}"] = f'=IF($B{r}="","",CHOOSE(WEEKDAY($B{r}),"الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"))'
+    ws[f"D{r}"] = None
+style(ws, f"A5:D{4+DN}", f(10), None, CENTER)
+for i in range(DN):
+    ws[f"B{5+i}"].number_format = DATE_FMT
+    ws[f"D{5+i}"].font = f(10, True, "1A3FA8")
+ws.freeze_panes = "A5"
+name("D_Date", f"'سجل الأيام'!$B$5:$B${4+DN}")
+name("D_Status", f"'سجل الأيام'!$D$5:$D${4+DN}")
+if CLEAN:
+    protect(ws)
+
 # ------------------------------------------------------------------ help
 ws = ws_help
 ws.column_dimensions["A"].width = 3; ws.column_dimensions["B"].width = 5; ws.column_dimensions["C"].width = 95
@@ -592,13 +658,15 @@ steps = [
     ("٤", "عبّئ الأعمدة الخضراء: التاريخ، المنطقة، الموقع، الأوقات، نوع المشاهدة، الوصف، الإجراء، عدد الصور، الإحداثيات، الملاحظات.", False),
     ("٥", "المنطقة والموقع ونوع المشاهدة والإجراء كلها قوائم تختار منها. قائمة المواقع تتغير حسب المنطقة اللي اخترتها.", False),
     ("٦", "من التطبيق: اضغط «تصدير»، افتح ملف الإكسل اللي يطلعه، انسخ الصفوف، والصقها في أول صف فاضي في السجل ابتداءً من عمود «التاريخ» (لصق قيم فقط).", False),
+    ("٧", "أيام الدوام بدون زيارات: يحدد لها المفتش من التطبيق (اجتماع / مكتب / إجازة)، وتظهر في شيت «سجل الأيام» وفي جدول أيام التقرير الأسبوعي. زيارات السبت والأحد تنكتب «مناوب».", False),
+    ("٨", "إذا كان في الملاحظات «يحتاج مراجعة»، يعني الإحداثية ما تطابق المنطقة المختارة، أو انكتبت يدويًا، أو ناقصة. المسؤول يراجعها.", False),
     ("", "الصور", True),
-    ("٧", "الصور ما تنحط داخل الإكسل عشان الملف ما يثقل. تكون في فولدر اسمه «الصور» بجانب ملف الإكسل، وداخله فولدر لكل زيارة باسم: التاريخ_الموقع (مثال: 2026-10-26_الثروانية).", False),
-    ("٨", "عمود «الصور» في السجل فيه رابط يفتح فولدر الزيارة مباشرة، وعمود «الخريطة» يفتح موقع الزيارة على خرائط جوجل.", False),
+    ("٩", "الصور ما تنحط داخل الإكسل عشان الملف ما يثقل. تكون في فولدر اسمه «الصور» بجانب ملف الإكسل، وداخله فولدر لكل زيارة باسم: التاريخ_الموقع (مثال: 2026-10-26_الثروانية).", False),
+    ("١٠", "عمود «الصور» في السجل فيه رابط يفتح فولدر الزيارة مباشرة، وعمود «الخريطة» يفتح موقع الزيارة على خرائط جوجل.", False),
     ("", "الإعدادات", True),
-    ("٩", "في شيت «الإعدادات» تقدر تغيّر اسم المفتش والجهة، وتضيف مواقع أو مناطق أو أنواع مشاهدات جديدة في الخانات الصفراء — وتظهر فورًا في القوائم والتقارير.", False),
+    ("١١", "في شيت «الإعدادات» تقدر تغيّر اسم المفتش والجهة، وتضيف مواقع أو مناطق أو أنواع مشاهدات جديدة في الخانات الصفراء — وتظهر فورًا في القوائم والتقارير.", False),
     ("", "قبل البدء", True),
-    ("١٠", "في السجل ٥ صفوف تجريبية ملوّنة بالبنفسجي عشان تشوف شكل التقارير. احذف محتواها (من عمود التاريخ إلى الملاحظات) قبل ما تبدأ التسجيل الفعلي.", False),
+    ("١٢", "في السجل ٥ صفوف تجريبية ملوّنة بالبنفسجي عشان تشوف شكل التقارير. احذف محتواها (من عمود التاريخ إلى الملاحظات) قبل ما تبدأ التسجيل الفعلي.", False),
 ]
 r = 3
 for num, text, is_head in steps:

@@ -196,6 +196,12 @@ ol.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;g
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--sv:#B7A2EC;--sv-soft:#2A2340}}
 :root[data-theme="dark"]{--sv:#B7A2EC;--sv-soft:#2A2340}
 .pill.surv{background:var(--sv-soft);color:var(--sv)}
+.pill.duty{background:#E3EAF7;color:#1E3A8A}
+.pill.review{background:#FFE0B2;color:#9A3412}
+.inp.ro{background:var(--bg,#f4f6f5);color:inherit;display:flex;align-items:center;min-height:44px}
+.day-st{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 0;border-top:1px solid rgba(0,0,0,.06)}
+.day-st:first-of-type{border-top:0}
+.day-st .chips{gap:6px}
 .btn.sv-go{border:1.5px solid var(--sv);color:var(--sv);background:var(--surface);font-weight:600}
 .sv-tag{display:flex;align-items:center;gap:10px;background:var(--sv-soft);color:var(--sv);border-radius:12px;padding:10px 12px;font-weight:600;font-size:.92rem}
 .sv-tag svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -254,6 +260,27 @@ const DEFAULT_AREAS={
 };
 const DEFAULT_TYPES=["حرق مخلفات","تحميل مياه جوفية في صهاريج","تصريف / كب صرف صحي","رمي نفايات عامة","تسرب زيوت أو مواد كيميائية","حفر آبار غير مصرح"];
 const DAYS=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+/* working days are Mon–Fri; a visit on Sat/Sun is a duty day («مناوب») */
+const isWeekend=d=>{const g=parseISO(d).getDay();return g===0||g===6};
+/* a working day without visits: the inspector says what it was (shown in Excel, sheet «سجل الأيام») */
+const DAY_ST=["اجتماع","مكتب","إجازة"];
+/* rough bounding boxes [latMin,latMax,lngMin,lngMax] used only to flag a visit for review when its
+   coordinates fall outside the area picked. Approximate on purpose — adjust here if a real site falls outside. */
+const AREA_BOX={
+  "ليوا":[22.80,23.40,53.00,54.45],
+  "حبشان":[23.72,23.98,53.45,53.85],
+  "مدينة زايد":[23.55,23.80,53.58,53.88],
+  "الرويس":[23.98,24.22,52.55,52.90],
+  "المرفأ":[23.92,24.22,53.25,53.90],
+  "غياثي":[23.70,24.00,52.62,52.98],
+  "السلع":[23.88,24.15,51.55,51.95]
+};
+const REVIEW="يحتاج مراجعة";
+function geoIssue(v){
+  if(!v.lat||!v.lng)return "بدون إحداثية";
+  if(v.geo==="paste")return "إحداثية مدخلة يدويًا";
+  const b=AREA_BOX[v.area];if(!b)return "";
+  const a=+v.lat,o=+v.lng;return(a<b[0]||a>b[1]||o<b[2]||o>b[3])?"الموقع لا يطابق المنطقة":""}
 const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const IC={
   plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
@@ -361,6 +388,7 @@ setInterval(()=>{if(S.dirty.size||S.pendingPhotos||S.appDirty)syncPending()},450
 
 function defaults(){return{name:"جاسم الحمادي",areas:JSON.parse(JSON.stringify(DEFAULT_AREAS)),types:DEFAULT_TYPES.slice(),companies:DEFAULT_COMPANIES.slice()}}
 function fixSettings(st){if(!Array.isArray(st.companies))st.companies=DEFAULT_COMPANIES.slice();
+  if(!st.dayStatus||typeof st.dayStatus!=="object")st.dayStatus={};if(!st.since)st.since=today();
   /* 2026-11: «بدع زايد» renamed «مدينة زايد» */
   const OLD="بدع زايد",NEW="مدينة زايد";
   if(st.areas&&st.areas[OLD]){const sites=st.areas[OLD].map(x=>x===OLD?NEW:x);const out={};
@@ -396,6 +424,8 @@ function renderTabs(){
 /* ---------------- shared bits ---------------- */
 function visitTags(v){const s=stats([v]);const t=[];if(v.src==="siri"||v.src==="voice")t.push('<span class="pill siri">صوتي</span>');
   if(v.status==="open")t.push('<span class="pill live">جارية</span>');
+  if(v.date&&isWeekend(v.date))t.push('<span class="pill duty">مناوب</span>');
+  if(v.status!=="open"&&geoIssue(v))t.push('<span class="pill review">'+REVIEW+'</span>');
   if(isSurv(v)){t.push('<span class="pill surv">معاينة</span>');return t.join("")}
   if(s.viol)t.push(`<span class="pill viol">مخالفة${s.viol>1?" ×"+s.viol:""}</span>`);
   else if(s.only)t.push(`<span class="pill obs">مشاهدة${s.only>1?" ×"+s.only:""}</span>`);
@@ -405,6 +435,22 @@ function visitRow(v,showDate){const ob=effObs(v);const sum=isSurv(v)?[SURV,v.sv.
   return `<button class="vrow" data-act="edit" data-id="${v.id}"><div class="vtime">${showDate?esc(DAYS[parseISO(v.date).getDay()]):esc(v.arrival||v.departure||"--:--")}</div>
   <div class="vmain"><b>${esc(v.area||"—")} · ${esc(v.site||"بدون موقع")}</b><span>${esc(sum)}${pics?" · "+pics+" صور":""}</span></div><div class="vtags">${visitTags(v)}</div></button>`}
 function statTiles(s,label){return `<div class="stats" aria-label="${esc(label)}"><div class="stat v"><b>${s.visits}</b><span>الزيارات</span></div><div class="stat o"><b>${s.obs}</b><span>المشاهدات</span></div><div class="stat x"><b>${s.viol}</b><span>المخالفات</span></div></div>`}
+
+/* ---------------- working days without visits ---------------- */
+/* Mon–Fri days of the last two weeks (up to today) with no visit at all. The inspector marks each one
+   اجتماع / مكتب / إجازة. Tapping the chosen status again clears it. Only the status can be set:
+   a visit can never be added to a past day. */
+function emptyWorkDays(){const t=today(),busy=new Set(S.visits.map(v=>v.date));
+  const first=S.visits.reduce((m,v)=>v.date<m?v.date:m,S.settings.since||t);const out=[];
+  for(let i=13;i>=0;i--){const d=addDays(t,-i);if(d<first||isWeekend(d)||busy.has(d))continue;out.push(d)}
+  return out.reverse()}
+function dayStatusCard(){const days=emptyWorkDays();if(!days.length)return "";const m=S.settings.dayStatus||{};
+  const pending=days.filter(d=>!m[d]).length;
+  return `<details class="card" ${pending?"open":""}><summary><b>أيام دوام بدون زيارات</b> <span class="small muted">${pending?pending+" بدون تحديد":"كلها محددة"}</span></summary>
+  <div class="small muted" style="margin:6px 0">اليوم اللي ما فيه زيارة، حدد شو كان عندك. يظهر في ملف الإكسل.</div>
+  ${days.map(d=>`<div class="day-st"><span>${esc(DAYS[parseISO(d).getDay()])} ${esc(shortDate(d))}${d===today()?" (اليوم)":""}</span>
+    <div class="chips">${DAY_ST.map(x=>`<button class="chip" data-act="dayst" data-d="${d}" data-v="${x}" aria-pressed="${m[d]===x}">${x}</button>`).join("")}</div></div>`).join("")}
+  </details>`}
 
 /* ---------------- views ---------------- */
 function vToday(){
@@ -417,7 +463,7 @@ function vToday(){
   ${S.cloudChecked&&!Cloud.ok?'<div class="banner">الحفظ السحابي غير متاح الحين، والبيانات محفوظة على هذا الجهاز فقط. صدّر ملف التقارير نهاية كل يوم حتى ما تضيع.</div>':""}
   ${Cloud.ok&&(S.dirty.size||S.pendingPhotos)?'<div class="banner">في تغييرات أو صور بانتظار الإنترنت، وبترتفع تلقائيًا أول ما ترجع التغطية.</div>':""}
   <section class="day"><div class="day-date">${esc(longDate(d))}</div></section>
-  ${open.map(v=>`<div class="live-card"><div><b>${isSurv(v)?"معاينة جارية":"زيارة جارية"}: ${esc(v.area)} · ${esc(v.site||"بدون موقع")}</b><span class="small muted">منذ ${esc(v.arrival||"")} — ${esc(shortDate(v.date))}</span></div><button class="btn primary" data-act="edit" data-id="${v.id}">متابعة</button></div>`).join("")}
+  ${open.map(v=>`<div class="live-card"><div><b>${isSurv(v)?"معاينة جارية":"زيارة جارية"}: ${esc(v.area)} · ${esc(v.site||"بدون موقع")}</b><span class="small muted">منذ ${esc(v.arrival||"")} — ${esc(shortDate(v.date))}</span></div><div class="row" style="flex-wrap:nowrap"><button class="btn primary" data-act="edit" data-id="${v.id}">متابعة</button><button class="btn danger ${S.armed==="del"+v.id?"armed":""}" data-act="delOpen" data-id="${v.id}">${S.armed==="del"+v.id?"تأكيد الحذف":"حذف"}</button></div></div>`).join("")}
   ${vaSupported()&&!S.speechBlocked?`<button class="btn big va-go" data-act="va">${IC.mic}المساعد الآلي — زيارة بالصوت</button>`:""}
   <button class="btn primary big" data-act="new">${IC.plus}بدء زيارة جديدة</button>
   <button class="btn big sv-go" data-act="svNew">${IC.doc}زيارة معاينة مزرعة (طلب حفر بئر)</button>
@@ -426,6 +472,7 @@ function vToday(){
     <textarea class="inp" id="impText" placeholder="الصق رد المساعد هنا"></textarea>
     <div class="row"><button class="btn primary" data-act="impPaste">استيراد</button><button class="btn" data-act="siri">من ملف</button><button class="btn ghost" data-act="impClose">إلغاء</button></div></div>`:
   `<button class="btn block" data-act="impOpen">${IC.mic}استيراد من مساعد القيادة</button>`}
+  ${dayStatusCard()}
   <div class="week-h"><b>هذا الأسبوع</b><span class="small muted">${esc(shortDate(ws))} – ${esc(shortDate(addDays(ws,4)))}</span></div>
   ${statTiles(stats(wk),"إحصائيات الأسبوع")}
   <h2 class="sec">زيارات اليوم</h2>
@@ -449,6 +496,8 @@ function rangeDates(){const d=today();
     case "custom":return[S.from||d,S.to||d];
     default:return["0000-01-01","9999-12-31"]}}
 function inRange(){const[a,b]=rangeDates();return sortVisits(S.visits.filter(v=>v.date>=a&&v.date<=b))}
+/* only finished visits go into the Excel file; an open one is still being recorded */
+const doneVisits=()=>S.visits.filter(v=>v.status!=="open");
 function vExport(){
   const l=inRange(),s=stats(l),open=l.filter(v=>v.status==="open").length;
   const opts=[["week","هذا الأسبوع"],["last","الأسبوع الماضي"],["month","هذا الشهر"],["all","الكل"],["custom","فترة محددة"]];
@@ -460,7 +509,7 @@ function vExport(){
     ${S.range!=="all"&&S.range!=="custom"?`<div class="small muted">${esc(longDate(rangeDates()[0]))} – ${esc(longDate(rangeDates()[1]))}</div>`:""}
     ${statTiles(s,"ملخص الفترة")}
     <div class="small muted num">${s.only} مشاهدة دون مخالف · ${s.clean} زيارة بلا مشاهدات${s.surv?" · "+s.surv+" معاينة مزرعة":""} · ${s.pics} صورة</div>
-    ${open?`<div class="banner">في ${open} زيارة جارية ما انتهت. تدخل في الملف بحالتها الحالية.</div>`:""}
+    ${open?`<div class="banner">في ${open} زيارة جارية ما انتهت. ما تدخل الملف لين تنهيها.</div>`:""}
   </div>
   <div class="card stack">
     <h3>ملخص وتوصيات المفتش</h3>
@@ -471,13 +520,13 @@ function vExport(){
   <div class="card stack">
     <h3>ملف التقارير — للإرسال للمدير</h3>
     <div class="small">إكسل كامل فيه كل زياراتك، والتقرير الأسبوعي والشهري والدوري جاهزين على الفترة المختارة. بعد الضغط تطلع قائمة المشاركة: اختر Outlook أو Teams أو واتساب وأرسله، أو احفظه في الملفات.</div>
-    <button class="btn primary block" data-act="report" ${!S.visits.length||S.busy?"disabled":""}>${S.busy==="report"?'<span class="spin"></span> جاري التجهيز…':IC.zip+"تجهيز ملف التقارير"}</button>
+    <button class="btn primary block" data-act="report" ${!doneVisits().length||S.busy?"disabled":""}>${S.busy==="report"?'<span class="spin"></span> جاري التجهيز…':IC.zip+"تجهيز ملف التقارير"}</button>
     <div class="hint">${IC.info}<span>افتح الملف بتطبيق Microsoft Excel عشان تنحسب التقارير. معاينة «الملفات» في الآيفون تعرض الأرقام فاضية.</span></div>
   </div>
   <div class="card stack">
     <h3>أرشيف الصور</h3>
     <div class="small">ملف ZIP فيه نفس ملف التقارير مع فولدر «الصور» مرتب بالتاريخ والموقع. فكّه على الكمبيوتر وتشتغل روابط الصور من داخل الإكسل.</div>
-    <button class="btn block" data-act="zip" ${!l.length||S.busy?"disabled":""}>${S.busy==="zip"?'<span class="spin"></span> جاري التجهيز…':"تصدير التقارير مع الصور (ZIP)"}</button>
+    <button class="btn block" data-act="zip" ${!l.some(v=>v.status!=="open")||S.busy?"disabled":""}>${S.busy==="zip"?'<span class="spin"></span> جاري التجهيز…':"تصدير التقارير مع الصور (ZIP)"}</button>
     ${S.lastExport?`<div class="small muted">آخر تصدير: ${esc(S.lastExport)}</div>`:""}
   </div>`;
 }
@@ -548,7 +597,7 @@ function vVisit(){
   const none=v.obs.length===1&&v.obs[0].type===NO_OBS;
   return `
   <div class="card stack"><h3>المكان</h3>
-    <label class="f">التاريخ<input class="inp" type="date" data-vf="date" value="${esc(v.date)}"></label>
+    <div class="f">التاريخ<div class="inp ro">${esc(longDate(v.date))}</div></div>
     <div class="chips" role="group" aria-label="المنطقة">${areaChips(v)}</div>
     ${siteField(v)}
     ${coordField(v)}
@@ -596,7 +645,7 @@ function locate(v,quiet){
   if(!navigator.geolocation){S.geoBlocked=true;render(true);return}
   if(!quiet)toast("جاري تحديد الموقع…");
   navigator.geolocation.getCurrentPosition(p=>{
-    v.lat=p.coords.latitude.toFixed(6);v.lng=p.coords.longitude.toFixed(6);v.acc=Math.round(p.coords.accuracy);
+    v.lat=p.coords.latitude.toFixed(6);v.lng=p.coords.longitude.toFixed(6);v.acc=Math.round(p.coords.accuracy);v.geo="gps";
     saveVisit(v,true);if(S.view==="visit"&&S.editId===v.id)render(true);if(!quiet)toast("تم تحديد الموقع");
   },err=>{S.geoBlocked=true;if(S.view==="visit")render(true);if(!quiet||err.code!==1)toast(err.code===1?"تحديد الموقع غير مسموح هنا — الصق الإحداثيات":"تعذر تحديد الموقع — الصق الإحداثيات")},
   {enableHighAccuracy:true,timeout:15000,maximumAge:20000});
@@ -663,9 +712,9 @@ function cellXml(ref,sAttr,val){
   if(val==null||val==="")return `<c r="${ref}"${sAttr}/>`;
   if(typeof val==="number")return `<c r="${ref}"${sAttr}><v>${val}</v></c>`;
   return `<c r="${ref}"${sAttr} t="inlineStr"><is><t xml:space="preserve">${xesc(val)}</t></is></c>`}
-function patchRow(rowXml,cells){
+function patchRow(rowXml,cells){const ov=cells._s||{};
   return rowXml.replace(/<c r="([A-Z]+)(\d+)"([^>]*?)(\/>|>[\s\S]*?<\/c>)/g,(m,col,rn,attrs)=>{
-    if(!(col in cells))return m;const s=(attrs.match(/\ss="\d+"/)||[""])[0];return cellXml(col+rn,s,cells[col])})}
+    if(!(col in cells)||col==="_s")return m;const s=ov[col]||(attrs.match(/\ss="\d+"/)||[""])[0];return cellXml(col+rn,s,cells[col])})}
 function patchSheet(xml,rows){
   return xml.replace(/<row r="(\d+)"([^>]*?)(\/>|>[\s\S]*?<\/row>)/g,(m,rn)=>rows[rn]?patchRow(m,rows[rn]):m)}
 const COLS="ABCDEFGHIJ".split("");
@@ -863,14 +912,22 @@ function reportPeriod(){
 async function buildWorkbook(){
   if(!TPL_B64)throw new Error("tpl");
   const zip=await JSZip.loadAsync(TPL_B64,{base64:true});
-  const list=sortVisits(S.visits);const rows={};let r=5,over=0;
+  const list=sortVisits(doneVisits());const rows={};let r=5,over=0;
+  /* filled rows take the unlocked styles of the hidden reference row; empty rows stay locked */
+  const f2="xl/worksheets/sheet2.xml";let x2=await zip.file(f2).async("string");const unl={};
+  x2=x2.replace(/<row r="1506"[^>]*?(\/>|>[\s\S]*?<\/row>)/,m=>{for(const c of m.matchAll(/<c r="([A-Z]+)1506"[^>]*?(\ss="\d+")/g))unl[c[1]]=c[2];return ""});
   for(const v of list){for(const o of effObs(v)){
     if(r>1504){over++;continue}
     const none=o.type===NO_OBS||!o.type;
     rows[r]={B:excelDate(v.date),C:v.area||"",D:v.site||v.area||"",E:excelTime(v.arrival),F:excelTime(v.departure),
       G:o.type||NO_OBS,H:isSurv(v)?svDesc(v):(o.desc||""),I:isSurv(v)?A_SURV:none?A_NONE:(o.action||A_OBS),J:o.photos.length,
-      K:v.lat?Number(v.lat):null,L:v.lng?Number(v.lng):null,M:v.notes||""};r++}}
-  const f2="xl/worksheets/sheet2.xml";zip.file(f2,patchSheet(await zip.file(f2).async("string"),rows));
+      K:v.lat?Number(v.lat):null,L:v.lng?Number(v.lng):null,M:[geoIssue(v)?REVIEW+": "+geoIssue(v):"",v.notes||""].filter(Boolean).join(" — ")};
+    rows[r]._s=unl;r++}}
+  zip.file(f2,patchSheet(x2,rows));
+  /* «سجل الأيام»: working days without a finished visit, with the status chosen in the app */
+  const busy=new Set(list.map(v=>v.date)),ds=S.settings.dayStatus||{};const drows={};let dr=5;
+  for(const d of Object.keys(ds).sort())if(ds[d]&&!busy.has(d)&&dr<=404){drows[dr]={B:excelDate(d),D:ds[d]};dr++}
+  const f7="xl/worksheets/sheet7.xml";if(zip.file(f7))zip.file(f7,patchSheet(await zip.file(f7).async("string"),drows));
   const P=reportPeriod();
   const f3="xl/worksheets/sheet3.xml";zip.file(f3,patchSheet(await zip.file(f3).async("string"),{4:{D:P.week}}));
   const f4="xl/worksheets/sheet4.xml";zip.file(f4,patchSheet(await zip.file(f4).async("string"),{4:{D:P.year,F:P.month}}));
@@ -895,7 +952,7 @@ async function offerFile(name,blob){
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);return true;
 }
 async function doExport(withPhotos){
-  if(S.busy||!S.visits.length)return;
+  if(S.busy||!doneVisits().length)return;
   if(!window.JSZip){toast("مكتبة الملفات ما تحمّلت — تأكد من الإنترنت وأعد فتح الصفحة");return}
   S.busy=withPhotos?"zip":"report";render(true);
   try{
@@ -904,7 +961,7 @@ async function doExport(withPhotos){
     const base="سجل_التفتيش_"+safeName(S.settings.name).replace(/\s+/g,"_")+"_"+today();
     let ok;
     if(withPhotos){
-      const list=inRange();const out=new JSZip();out.file(base+".xlsx",xl);const counters={};
+      const list=inRange().filter(v=>v.status!=="open");const out=new JSZip();out.file(base+".xlsx",xl);const counters={};
       for(const v of list){for(const o of effObs(v)){for(const pid of o.photos){const blob=await getPhotoBlob(pid);if(!blob)continue;const p={blob};
         const folder="الصور/"+v.date+"_"+safeName(v.site||"بدون موقع");const t=new Date(phTime(pid));
         counters[folder]=(counters[folder]||0)+1;
@@ -955,7 +1012,7 @@ function vSurvey(v){const s=v.sv,o=v.obs[0],fresh=svFresh(v);
     ${svCompanyField(v)}
   </div>
   <div class="card stack"><h3>الزيارة</h3>
-    <label class="f">التاريخ<input class="inp" type="date" data-vf="date" value="${esc(v.date)}"></label>
+    <div class="f">التاريخ<div class="inp ro">${esc(longDate(v.date))}</div></div>
     <div class="grid2"><label class="f">وقت الوصول<input class="inp" type="time" data-vf="arrival" value="${esc(v.arrival)}"></label>
     <label class="f">وقت المغادرة<input class="inp" type="time" data-vf="departure" value="${esc(v.departure)}"></label></div>
     ${coordField(v)}
@@ -1258,8 +1315,8 @@ async function importSiri(file){
 أعد فقط مصفوفة JSON.
 العناصر: ${JSON.stringify(items.map((x,i)=>({i,time:x.date+" "+x.time,الوجهة:x.dest,المشاهدة:x.obs,الإجراء:x.action,الملاحظات:x.notes})))}`,{cache:false});
     if(Array.isArray(out))res=out}catch(e){const m=aiErr(e);if(m&&S.aiOff)toast(m)}}
-  let added=0,merged=0;
-  items.forEach((it,i)=>{
+  let added=0,merged=0,old=0;
+  items.forEach((it,i)=>{if(it.date!==today()){old++;return}
     const g=guess(it);const r=(res||[]).find(x=>Number(x&&x.i)===i)||{};
     const area=S.settings.areas[r.area]?r.area:g.area;
     const site=String(r.site||g.site||"").trim();
@@ -1272,13 +1329,13 @@ async function importSiri(file){
       if(emptyOnly)v.obs=[ob];else if(v.obs.length===1&&v.obs[0].type===NO_OBS&&ob.type!==NO_OBS){ob.photos=v.obs[0].photos;v.obs=[ob]}else v.obs.push(ob);
       if(notes)v.notes=(v.notes?v.notes+"\n":"")+notes;if(!v.departure&&it.time)v.departure=it.time;
       if(!v.lat&&it.coords){v.lat=it.coords[0];v.lng=it.coords[1]}merged++}
-    else{v={id:uid(),date:it.date,area:area||"",site,arrival:"",departure:it.time||"",lat:it.coords?it.coords[0]:"",lng:it.coords?it.coords[1]:"",acc:"",
+    else{v={id:uid(),date:it.date,area:area||"",site,arrival:"",departure:it.time||"",lat:it.coords?it.coords[0]:"",lng:it.coords?it.coords[1]:"",acc:"",geo:it.coords?"paste":"",
       obs:[ob],notes,status:"open",src:"siri",createdAt:Date.now(),updatedAt:Date.now()};S.visits.push(v);added++}
     if(site&&area&&S.settings.areas[area]&&!S.settings.areas[area].includes(site))S.settings.areas[area].push(site);
     saveVisit(v,true);done.add(it.hash)});
   starts.forEach(b=>done.add(b.hash));S.settings.siriDone=[...done].slice(-600);saveSettings();
   S.aiBusy=false;S.view="today";render();
-  toast(`تم الاستيراد: ${added} زيارة جديدة${merged?" و"+merged+" أضيفت لزيارات موجودة":""}. راجعها وأضف الصور.`);
+  toast(`تم الاستيراد: ${added} زيارة جديدة${merged?" و"+merged+" أضيفت لزيارات موجودة":""}${old?". "+old+" من أيام سابقة ما انضافت (الزيارة تنسجل في يومها)":""}. راجعها وأضف الصور.`);
 }
 
 const DRIVE_PROMPT=`أنت «مساعد القيادة» للمفتش البيئي ${"${NAME}"} في هيئة البيئة، منطقة الظفرة. أكلمك بالصوت وأنا أسوق، فالتزم بهذا:
@@ -1554,17 +1611,18 @@ async function vaCapture(){
   try{const raw=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(),"image/jpeg",0.92));
     await storePhoto(v,o,raw,new Date());VA.shots++;saveVisit(v,true);vaRender();return true}catch(e){return false}}
 function vaPics(n){return n===1?"صورة واحدة.":n===2?"صورتين.":n+" صور."}
-function vaSummary(v){const s=stats([v]);const parts=["انحفظت زيارة "+(v.site||v.area||"")+"."];
+function vaSummary(v){const s=stats([v]);const parts=[(v.lat?"انحفظت زيارة ":"زيارة ")+(v.site||v.area||"")+"."];
   parts.push(s.obs?(s.obs===1?"مشاهدة واحدة":s.obs+" مشاهدات")+(s.viol?"، و"+(s.viol===1?"مخالفة واحدة":s.viol+" مخالفات"):"")+".":"بدون مشاهدات.");
   if(s.pics)parts.push(vaPics(s.pics));
-  parts.push(v.lat?"الإحداثيات مسجلة.":"ما انسجلت الإحداثيات، أضفها من الشاشة.");
-  parts.push("المغادرة "+v.departure+".");return parts.join(" ")}
+  parts.push("المغادرة "+v.departure+".");
+  if(!v.lat)parts.push("ما انسجلت الإحداثيات، فالزيارة تظل جارية لين تسجلها من الشاشة.");return parts.join(" ")}
 async function vaFinish(){const v=vaVisit();if(!v)return vaStop();
   v.obs=v.obs.filter(o=>o.type);if(!v.obs.length)v.obs=[{id:uid(),type:NO_OBS,desc:"",action:A_NONE,photos:[]}];
-  v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);
+  v.departure=hhmm(new Date());const geo=!!(v.lat&&v.lng);v.status=geo?"done":"open";await saveVisit(v,true);
   const g=++VA.gen;VA.mode="speak";VA.say=vaSummary(v);vaCamOff();vaRender();
   await speak(VA.say);if(g!==VA.gen)return;
-  vaClose();S.view="today";S.editId=null;render();toast("تم حفظ الزيارة")}
+  vaClose();if(geo){S.view="today";S.editId=null;render();toast("تم حفظ الزيارة")}
+  else{S.view="visit";S.editId=v.id;render();toast("لازم تسجل الإحداثيات قبل الإنهاء: اضغط «تحديد موقعي الحالي»")}}
 async function vaCancel(){const v=vaVisit();const g=++VA.gen;vaCamOff();if(v)await removeVisit(v);
   VA.mode="speak";VA.say="انلغت الزيارة.";vaRender();await speak(VA.say);if(g!==VA.gen)return;
   vaClose();S.view="today";S.editId=null;render()}
@@ -1623,7 +1681,7 @@ document.addEventListener("click",async e=>{
   if(tab){S.view=tab.dataset.tab;S.armed=null;render();return}
   const b=e.target.closest("[data-act]");if(!b)return;
   const act=b.dataset.act,v=visit(S.editId);
-  if(S.armed&&!["wipe","delVisit","rmObs"].includes(act))S.armed=null;
+  if(S.armed&&!["wipe","delVisit","rmObs","delOpen"].includes(act))S.armed=null;
   switch(act){
     case "new":return newVisit();
     case "svNew":return newSurvey();
@@ -1639,6 +1697,11 @@ document.addEventListener("click",async e=>{
     case "addCo":{const n=(($("#newCo")||{}).value||"").trim();if(!n)return;S.settings.companies=S.settings.companies||[];if(!S.settings.companies.includes(n))S.settings.companies.push(n);await saveSettings();return render(true)}
     case "rmCo":S.settings.companies.splice(+b.dataset.i,1);await saveSettings();return render(true);
     case "va":return vaStart();
+    case "delOpen":{const x=visit(b.dataset.id);if(!x)return;const k="del"+x.id;
+      if(S.armed!==k){S.armed=k;render(true);setTimeout(()=>{if(S.armed===k){S.armed=null;render(true)}},4000);return}
+      await removeVisit(x);S.armed=null;toast("تم حذف الزيارة");return render(true)}
+    case "dayst":{const d=b.dataset.d,st=b.dataset.v;const m=S.settings.dayStatus=S.settings.dayStatus||{};
+      if(m[d]===st)delete m[d];else m[d]=st;await saveSettings();return render(true)}
     case "edit":S.view="visit";S.editId=b.dataset.id;S.addingSite=false;S.addingCo=false;S.addingType=null;S.armed=null;return render();
     case "back":S.view="today";S.editId=null;S.armed=null;return render();
     case "area":if(!v)return;v.area=b.dataset.v;if(!(S.settings.areas[v.area]||[]).includes(v.site))v.site="";S.addingSite=false;saveVisit(v);return render(true);
@@ -1646,7 +1709,7 @@ document.addEventListener("click",async e=>{
       const l=S.settings.areas[v.area];if(!l.includes(n)){l.push(n);await saveSettings()}v.site=n;S.addingSite=false;saveVisit(v);toast("أضيف «"+n+"» للقائمة");return render(true)}
     case "cancelSite":S.addingSite=false;return render(true);
     case "locate":if(v)locate(v);return;
-    case "clearCoord":if(v){v.lat=v.lng=v.acc="";saveVisit(v);render(true)}return;
+    case "clearCoord":if(v){v.lat=v.lng=v.acc=v.geo="";saveVisit(v);render(true)}return;
     case "leaveNow":if(v){v.departure=hhmm(new Date());saveVisit(v);render(true)}return;
     case "addObs":if(v){v.obs.push({id:uid(),type:"",desc:"",action:A_OBS,photos:[]});saveVisit(v);render(true);
       setTimeout(()=>{const c=document.querySelector(`.obs-card[data-oid="${v.obs[v.obs.length-1].id}"]`);if(c)c.scrollIntoView({behavior:"smooth",block:"start"})},50)}return;
@@ -1667,6 +1730,7 @@ document.addEventListener("click",async e=>{
       await delPhoto(b.dataset.pid);saveVisit(v);return render(true)}
     case "mic":return dictate(b.dataset.oid,b);
     case "finish":{if(!v)return;
+      if(!v.lat||!v.lng)return toast("لازم تسجل الإحداثيات قبل الإنهاء: اضغط «تحديد موقعي الحالي»");
       if(isSurv(v)){const m=svCheck(v);if(m)return toast(m);if(!v.departure)v.departure=hhmm(new Date());v.status="done";await saveVisit(v,true);toast("انحفظت المعاينة");return svMakePdf(v)}
       if(!v.area||!v.site)return toast("اختر المنطقة والموقع قبل الإنهاء");
       if(v.obs.some(o=>!o.type))return toast("حدد نوع كل مشاهدة، أو احذف الفاضية");
@@ -1706,7 +1770,7 @@ document.addEventListener("input",e=>{
   const t=e.target,v=visit(S.editId);
   if(t.id==="setName"){S.settings.name=t.value;saveSettingsSoon();return}
   if(t.id==="repNote"){setNote(t.value);return}
-  if(t.id==="coordPaste"&&v){const c=parseCoords(t.value);if(c){v.lat=c[0];v.lng=c[1];v.acc="";saveVisit(v);render(true);toast("تم حفظ الإحداثيات")}return}
+  if(t.id==="coordPaste"&&v){const c=parseCoords(t.value);if(c){v.lat=c[0];v.lng=c[1];v.acc="";v.geo="paste";saveVisit(v);render(true);toast("تم حفظ الإحداثيات")}return}
   if(!v)return;
   if(t.dataset.sf&&v.sv){v.sv[t.dataset.sf]=t.dataset.num?normDigits(t.value).replace(/\D/g,""):t.value;saveVisit(v);return}
   if(t.dataset.vf){if(t.dataset.vf==="date"&&!t.value)return;v[t.dataset.vf]=t.value;saveVisit(v);if(t.dataset.vf==="date"){renderTop();}return}

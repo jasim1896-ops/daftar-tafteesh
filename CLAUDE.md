@@ -55,6 +55,18 @@ Tabs: اليوم · السجل · التصدير · المساعد · الإعد
 
 Build: `python3 build.py` (after `python3 excel/make_xlsx.py --clean` if the template changed). Commit `index.html`. GitHub Pages serves the repo root of `main`.
 
+## Update 2026-11-13 (after the management submission) — the seven fixes
+Approved with him on 2026-11-13 (management liked the demo; a discussion meeting is coming). Rule: **improve, never remove** anything shown in the videos/presentation. Backup before: branch `backup-2026-11-13`.
+1. **Only finished visits go into Excel** (`doneVisits()`); an open visit (or an abandoned empty survey) is left out until finished. Export banner says so.
+2. **Delete an open visit from اليوم**: «حذف» on the live card, tap twice to confirm (`delOpen`).
+3. **Weekend = duty**: a visit on Sat/Sun shows the pill «مناوب»; Excel log column N shows «السبت (مناوب)»; weekly report row 18 is «السبت والأحد» (عطلة نهاية الأسبوع / مناوب: areas), total moved to row 19 (rows 20+ unchanged, notes still B77).
+4. **Working day without visits**: card «أيام دوام بدون زيارات» on اليوم (Mon–Fri of the last 14 days, from `settings.since` or the first visit) — he picks اجتماع / مكتب / إجازة (`settings.dayStatus`, synced with settings). **Not** set automatically (could be a meeting in Abu Dhabi). Excel: new sheet7 «سجل الأيام» (names `D_Date`, `D_Status`), and the weekly day table shows the status in «المناطق» when the day has no visits.
+5. **No back-dating**: the date field in the visit/survey editors is read-only; «استيراد من مساعد القيادة» skips items not dated today.
+6. **No finished visit without coordinates**: «إنهاء» refuses without lat/lng; the voice assistant keeps the visit open and opens the editor.
+7. **Review flag**: `geoIssue(v)` → «يحتاج مراجعة: …» in Excel column M (orange) and a pill in the app, when coordinates are outside the rough `AREA_BOX` of the chosen area, were typed/pasted (`v.geo="paste"`; GPS sets `v.geo="gps"`), or are missing. Boxes are approximate — adjust `AREA_BOX` if a real site falls outside. Areas without a box are not checked.
+- **Excel locking** (clean template only): sheets «سجل الزيارات» and «سجل الأيام» are protected (password `daftar2026`, filter/sort allowed). The app gives filled log rows the unlocked styles of hidden reference row 1506 (`_s` override in `patchRow`), so recorded rows stay editable and empty rows cannot be typed into. This is a deterrent, not security (the repo is public; real protection = agency servers).
+- Tested: Playwright run (gps/mismatch/no-coords/delete/day status/export), LibreOffice recalculation = app cache on all 19,632 formula cells, 0 errors.
+
 ## Field test log
 - 2026-10-29, GitHub Pages version installed on his iPhone home screen: GPS fills automatically ✓, the «إملاء صوتي» button works ✓. Bug: iOS delivers dictation in chunks that were glued without spaces; fixed by joining the results with spaces. He said more adjustments are needed; ask him what they are.
 
